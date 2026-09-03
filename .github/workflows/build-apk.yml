@@ -29,7 +29,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-            - name: Extract ARS POS source
+      - name: Extract ARS POS source
         run: |
           unzip -q ARS_POS_1.0.0_RELEASE_CANDIDATE_FIXED.zip
           echo "Source ARS POS berhasil diekstrak"
