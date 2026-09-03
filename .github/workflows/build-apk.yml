@@ -29,11 +29,11 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract ARS POS source
-        run: |
-          unzip -q ARS_POS_1.0.0_RELEASE_CANDIDATE.zip
-          echo "Source ARS POS berhasil diekstrak"
-          ls -la ARS_POS_Phase2
+      - - name: Extract ARS POS source
+  run: |
+    unzip -q ARS_POS_1.0.0_RELEASE_CANDIDATE_FIXED.zip
+    echo "Source ARS POS berhasil diekstrak"
+    ls -la ARS_POS_Phase2
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
