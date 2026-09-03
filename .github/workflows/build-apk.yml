@@ -30,23 +30,47 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK components
+      - name: Install Android SDK
         run: |
           sdkmanager "platform-tools"
           sdkmanager "platforms;android-35"
           sdkmanager "build-tools;35.0.0"
 
+      - name: Extract ARS POS source
+        run: |
+          mkdir -p build-source
+          unzip -q ARS_POS_1.0.0_COMPILE_FIXED3_GITHUB_READY.zip -d build-source
+
+          echo "=== Mencari Gradle project ==="
+
+          PROJECT_DIR=$(find build-source -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle tidak ditemukan"
+            find build-source -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PROJECT_DIR")
+
+          echo "Gradle project ditemukan di:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
       - name: Build Release APK
         run: |
+          cd "$PROJECT_DIR"
           gradle clean :app:assembleRelease --stacktrace
 
       - name: Check APK
         run: |
-          ls -lh app/build/outputs/apk/release/
+          find "$PROJECT_DIR/app/build/outputs/apk/release" \
+            -type f -name "*.apk" -ls
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ARS-POS-1.0.0-RELEASE
-          path: app/build/outputs/apk/release/*.apk
+          path: "**/app/build/outputs/apk/release/*.apk"
           if-no-files-found: error
