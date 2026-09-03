@@ -31,7 +31,7 @@ jobs:
 
       - name: Extract ARS POS source
         run: |
-          unzip -q ARS_POS_1.0.0_JVM17_FIXED.zip
+          unzip -q ARS_POS_1.0.0_COMPILE_FIXED.zip
           echo "Source ARS POS berhasil diekstrak"
           ls -la ARS_POS_Phase2
 
