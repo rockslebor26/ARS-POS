@@ -1,4 +1,4 @@
-name: ARS POS - Build APK
+name: ARS POS Release
 
 on:
   workflow_dispatch:
@@ -26,14 +26,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Extract ARS POS source
-        run: |
-          unzip -q ARS_POS_1.0.0_COMPILE_FIXED2.zip
-          echo "Source ARS POS berhasil diekstrak"
-          ls -la ARS_POS_Phase2
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -45,17 +37,16 @@ jobs:
           sdkmanager "build-tools;35.0.0"
 
       - name: Build Release APK
-        working-directory: ARS_POS_Phase2
         run: |
           gradle clean :app:assembleRelease --stacktrace
 
       - name: Check APK
         run: |
-          ls -lh ARS_POS_Phase2/app/build/outputs/apk/release/
+          ls -lh app/build/outputs/apk/release/
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ARS-POS-1.0.0-RELEASE
-          path: ARS_POS_Phase2/app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
