@@ -34,7 +34,7 @@ jobs:
 
 
       # ============================================================
-      # 3. SETUP ANDROID SDK TOOLS
+      # 3. SETUP ANDROID SDK
       # ============================================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
@@ -61,6 +61,7 @@ jobs:
 
           echo ""
           echo "Accepting Android SDK licenses..."
+
           yes | sdkmanager --licenses >/dev/null || true
 
           echo ""
@@ -113,6 +114,7 @@ jobs:
 
           echo ""
           echo "ZIP FILES:"
+
           find . \
             -type f \
             -iname "*.zip" \
@@ -120,38 +122,70 @@ jobs:
 
 
       # ============================================================
-      # 7. FIND COMPLETE PHASE 1 ZIP
+      # 7. FIND LATEST LOGIN FIX ZIP
+      #
+      # ZIP ini menjadi PRIORITAS UTAMA.
       # ============================================================
-      - name: Find Phase 1 project ZIP
+      - name: Find latest ARS POS ZIP
         shell: bash
         run: |
           set -e
 
           ZIP_FILE=""
 
-          # Prioritas utama:
-          # ZIP COMPLETE FIXED terbaru
-          EXACT_ZIP="./ARS_POS_PHASE1_COMPLETE_FIXED.zip"
+          # --------------------------------------------------------
+          # PRIORITAS 1
+          # Login Fix terbaru
+          # --------------------------------------------------------
+          EXACT_ZIP="./ARS_POS_PHASE1_LOGIN_FIX_v1_COMPLETE.zip"
 
           if [ -f "$EXACT_ZIP" ]; then
 
             ZIP_FILE="$EXACT_ZIP"
 
+            echo "LOGIN FIX ZIP ditemukan."
+
           else
 
-            echo "Complete Fixed ZIP tidak ditemukan."
-            echo "Mencari ZIP Phase 1 Branding sebagai fallback..."
+            echo "Login Fix ZIP tidak ditemukan."
+            echo "Mencari Complete Fixed ZIP..."
 
-            ZIP_FILE=$(find . \
-              -type f \
-              -iname "*PHASE1*BRANDING*.zip" \
-              | head -n 1)
+            # ------------------------------------------------------
+            # PRIORITAS 2
+            # Complete Fixed
+            # ------------------------------------------------------
+            EXACT_ZIP="./ARS_POS_PHASE1_COMPLETE_FIXED.zip"
+
+            if [ -f "$EXACT_ZIP" ]; then
+
+              ZIP_FILE="$EXACT_ZIP"
+
+            else
+
+              echo "Complete Fixed ZIP tidak ditemukan."
+              echo "Mencari Phase 1 Branding..."
+
+              # ----------------------------------------------------
+              # PRIORITAS 3
+              # Phase 1 Branding
+              # ----------------------------------------------------
+              ZIP_FILE=$(find . \
+                -type f \
+                -iname "*PHASE1*BRANDING*.zip" \
+                | head -n 1)
+
+            fi
 
           fi
 
+
+          # --------------------------------------------------------
+          # VALIDASI
+          # --------------------------------------------------------
           if [ -z "$ZIP_FILE" ]; then
 
-            echo "ERROR: ZIP Phase 1 tidak ditemukan."
+            echo ""
+            echo "ERROR: Tidak ada ZIP project ARS POS."
 
             echo ""
             echo "ZIP yang tersedia:"
@@ -165,17 +199,27 @@ jobs:
 
           fi
 
+
           echo ""
-          echo "ZIP YANG DIGUNAKAN:"
+          echo "=========================================="
+          echo "ZIP YANG AKAN DIGUNAKAN"
+          echo "=========================================="
+
           echo "$ZIP_FILE"
+
+          echo ""
+
+          ls -lh "$ZIP_FILE"
+
+          echo ""
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 8. EXTRACT COMPLETE PROJECT
+      # 8. EXTRACT PROJECT
       # ============================================================
-      - name: Extract Phase 1 project
+      - name: Extract ARS POS project
         shell: bash
         run: |
           set -e
@@ -242,7 +286,7 @@ jobs:
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
           echo ""
-          echo "settings.gradle.kts ditemukan:"
+          echo "settings.gradle.kts:"
           echo "$SETTINGS_FILE"
 
           echo ""
@@ -253,7 +297,7 @@ jobs:
 
 
       # ============================================================
-      # 10. VALIDATE GRADLE PROJECT
+      # 10. VALIDATE PROJECT
       # ============================================================
       - name: Validate Gradle project
         shell: bash
@@ -300,11 +344,11 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          MAIN_FILE="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
           echo "=========================================="
           echo "MAINACTIVITY CHECK"
           echo "=========================================="
-
-          MAIN_FILE="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
           echo ""
           echo "File:"
@@ -315,12 +359,16 @@ jobs:
           wc -l "$MAIN_FILE"
 
           echo ""
+          echo "MainActivity:"
+          grep -n "class MainActivity" "$MAIN_FILE" || true
+
+          echo ""
           echo "App function:"
           grep -n "fun App" "$MAIN_FILE" || true
 
           echo ""
-          echo "MainActivity:"
-          grep -n "class MainActivity" "$MAIN_FILE" || true
+          echo "Login function:"
+          grep -n "fun Login" "$MAIN_FILE" || true
 
 
       # ============================================================
@@ -339,7 +387,7 @@ jobs:
 
           echo ""
           echo "LAUNCHER ICONS:"
-          
+
           find app/src/main/res \
             -type f \
             \( \
@@ -388,7 +436,7 @@ jobs:
 
           echo ""
           echo "=========================================="
-          echo "ANDROID"
+          echo "ANDROID SDK"
           echo "=========================================="
 
           sdkmanager --list_installed \
@@ -478,11 +526,8 @@ jobs:
             | head -n 1)
 
           if [ -z "$APK" ]; then
-
             echo "ERROR: APK tidak ditemukan."
-
             exit 1
-
           fi
 
           echo ""
@@ -540,11 +585,8 @@ jobs:
             | head -n 1)
 
           if [ -z "$APK" ]; then
-
             echo "ERROR: APK tidak ditemukan."
-
             exit 1
-
           fi
 
           FINAL_APK="app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk"
