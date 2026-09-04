@@ -17,7 +17,7 @@ jobs:
     steps:
 
       # ============================================================
-      # 1. CHECKOUT SOURCE CODE
+      # 1. CHECKOUT REPOSITORY
       # ============================================================
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -47,12 +47,7 @@ jobs:
 
 
       # ============================================================
-      # 4. SETUP GRADLE
-      #
-      # Project kita menggunakan:
-      # Android Gradle Plugin 8.7.3
-      #
-      # Gradle 8.9 adalah versi yang kompatibel.
+      # 4. SETUP GRADLE 8.9
       # ============================================================
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
@@ -61,56 +56,198 @@ jobs:
 
 
       # ============================================================
-      # 5. CEK ENVIRONMENT
+      # 5. CHECK REPOSITORY
       # ============================================================
-      - name: Check build environment
+      - name: Check repository files
         run: |
-          echo "=== JAVA ==="
-          java -version
+          echo "=========================================="
+          echo "REPOSITORY ROOT"
+          echo "=========================================="
+
+          pwd
 
           echo ""
-          echo "=== GRADLE ==="
-          gradle --version
+          echo "Files:"
+          ls -lah
 
           echo ""
-          echo "=== ANDROID SDK ==="
-          echo "ANDROID_HOME=$ANDROID_HOME"
-
-          echo ""
-          echo "=== PROJECT ==="
-          ls -la
-
-          echo ""
-          echo "=== APP SOURCE ==="
-          find app/src/main -maxdepth 3 -type f | sort
+          echo "ZIP FILES:"
+          find . -maxdepth 2 -type f -iname "*.zip" -print
 
 
       # ============================================================
-      # 6. VALIDASI STRUKTUR PROJECT
+      # 6. FIND PHASE 1 ZIP
+      # ============================================================
+      - name: Find Phase 1 ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE=$(find . \
+            -type f \
+            -iname "*PHASE1*BRANDING*.zip" \
+            | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: ZIP PHASE1 BRANDING tidak ditemukan."
+            echo ""
+            echo "ZIP yang tersedia:"
+            find . -type f -iname "*.zip" -print
+            exit 1
+          fi
+
+          echo "ZIP ditemukan:"
+          echo "$ZIP_FILE"
+
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+
+
+      # ============================================================
+      # 7. EXTRACT PHASE 1 PROJECT
+      # ============================================================
+      - name: Extract Phase 1 project
+        shell: bash
+        run: |
+          set -e
+
+          echo "Extracting:"
+          echo "$ZIP_FILE"
+
+          mkdir -p extracted
+
+          unzip -o "$ZIP_FILE" -d extracted
+
+          echo ""
+          echo "=========================================="
+          echo "EXTRACTED FILES"
+          echo "=========================================="
+
+          find extracted -maxdepth 3 -type f | head -n 100
+
+
+      # ============================================================
+      # 8. FIND GRADLE PROJECT
+      # ============================================================
+      - name: Locate Gradle project
+        shell: bash
+        run: |
+          set -e
+
+          echo "Mencari settings.gradle.kts..."
+
+          SETTINGS_FILE=$(find extracted \
+            -type f \
+            -name "settings.gradle.kts" \
+            | head -n 1)
+
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "ERROR: settings.gradle.kts tidak ditemukan."
+            echo ""
+            echo "Isi extracted:"
+            find extracted -maxdepth 5 -type f | sort
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+
+          echo ""
+          echo "Gradle project ditemukan:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+
+      # ============================================================
+      # 9. VALIDATE PROJECT STRUCTURE
       # ============================================================
       - name: Validate Gradle project
+        shell: bash
         run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "PROJECT DIRECTORY"
+          echo "=========================================="
+
+          pwd
+
+          echo ""
+          echo "Project files:"
+          ls -lah
+
+          echo ""
+          echo "Validating..."
+
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
 
+          echo ""
           echo "Gradle project structure OK."
 
 
       # ============================================================
-      # 7. CLEAN BUILD
+      # 10. CHECK ARS BRANDING FILES
+      # ============================================================
+      - name: Check ARS branding
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "ARS BRANDING FILES"
+          echo "=========================================="
+
+          echo ""
+          echo "Launcher icons:"
+          find app/src/main/res \
+            -type f \
+            \( -iname "*launcher*" -o -iname "ic_launcher*" \) \
+            -print || true
+
+          echo ""
+          echo "ARS background:"
+          find app/src/main/res \
+            -type f \
+            -iname "*ars_background*" \
+            -print || true
+
+          echo ""
+          echo "Android Manifest:"
+          grep -n "android:icon\|android:roundIcon" \
+            app/src/main/AndroidManifest.xml || true
+
+
+      # ============================================================
+      # 11. CLEAN BUILD
       # ============================================================
       - name: Clean project
+        shell: bash
         run: |
-          gradle clean --no-daemon --stacktrace
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          gradle clean \
+            --no-daemon \
+            --stacktrace
 
 
       # ============================================================
-      # 8. BUILD RELEASE APK
+      # 12. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
+        shell: bash
         run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
           gradle :app:assembleRelease \
             --no-daemon \
             --stacktrace \
@@ -118,11 +255,18 @@ jobs:
 
 
       # ============================================================
-      # 9. CEK HASIL APK
+      # 13. CHECK APK OUTPUT
       # ============================================================
       - name: Check APK output
+        shell: bash
         run: |
-          echo "=== APK OUTPUT ==="
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "APK OUTPUT"
+          echo "=========================================="
 
           find app/build/outputs/apk/release \
             -maxdepth 1 \
@@ -131,18 +275,20 @@ jobs:
             -print
 
           echo ""
-          echo "=== FILE SIZE ==="
+          echo "APK SIZE:"
 
           ls -lh app/build/outputs/apk/release/*.apk
 
 
       # ============================================================
-      # 10. VERIFY APK
+      # 14. VERIFY APK SIGNATURE
       # ============================================================
-      - name: Verify APK
+      - name: Verify APK signature
         shell: bash
         run: |
           set -e
+
+          cd "$PROJECT_DIR"
 
           APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
@@ -155,11 +301,13 @@ jobs:
             exit 1
           fi
 
-          echo "APK ditemukan:"
+          echo "APK:"
           echo "$APK"
 
           echo ""
-          echo "=== APK SIGNATURE ==="
+          echo "=========================================="
+          echo "APK SIGNATURE"
+          echo "=========================================="
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -168,12 +316,14 @@ jobs:
 
 
       # ============================================================
-      # 11. VERIFY APK ZIP ALIGNMENT
+      # 15. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
         run: |
           set -e
+
+          cd "$PROJECT_DIR"
 
           APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
@@ -189,12 +339,14 @@ jobs:
 
 
       # ============================================================
-      # 12. RENAME APK
+      # 16. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
         run: |
           set -e
+
+          cd "$PROJECT_DIR"
 
           APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
@@ -211,36 +363,44 @@ jobs:
 
           cp "$APK" "$FINAL_APK"
 
-          echo "Final APK:"
+          echo ""
+          echo "=========================================="
+          echo "FINAL APK"
+          echo "=========================================="
+
           ls -lh "$FINAL_APK"
 
 
       # ============================================================
-      # 13. SHA-256 CHECKSUM
+      # 17. GENERATE SHA-256
       # ============================================================
       - name: Generate APK checksum
         shell: bash
         run: |
           set -e
 
-          cd app/build/outputs/apk/release
+          cd "$PROJECT_DIR/app/build/outputs/apk/release"
 
           sha256sum ARS-POS-1.0.0-signed.apk \
             > ARS-POS-1.0.0-signed.apk.sha256
 
-          echo "=== SHA-256 ==="
+          echo ""
+          echo "=========================================="
+          echo "SHA-256"
+          echo "=========================================="
+
           cat ARS-POS-1.0.0-signed.apk.sha256
 
 
       # ============================================================
-      # 14. UPLOAD APK
+      # 18. UPLOAD APK ARTIFACT
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
           name: ARS-POS-1.0.0-SIGNED
           path: |
-            app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk
-            app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk.sha256
           if-no-files-found: error
           retention-days: 30
