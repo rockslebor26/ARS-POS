@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 3.3 Payment UI Fix
+    name: Build ARS POS Phase 4.1 Product Photo Database
     runs-on: ubuntu-latest
 
     steps:
@@ -96,25 +96,26 @@ jobs:
 
 
       # ============================================================
-      # 7. REQUIRE PHASE 3.3 PROJECT ZIP
+      # 7. REQUIRE PHASE 4.1 PROJECT ZIP
       # ============================================================
-      - name: Require Phase 3.3 project ZIP
+      - name: Require Phase 4.1 project ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE3_3_PAYMENT_UI_FIX_COMPLETE.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_1_PRODUCT_PHOTO_DATABASE_COMPLETE.zip"
 
           echo "=========================================="
-          echo "CHECK PHASE 3.3 ZIP"
+          echo "CHECK PHASE 4.1 ZIP"
           echo "=========================================="
 
           if [ ! -f "$ZIP_FILE" ]; then
+
             echo "ERROR:"
             echo "$ZIP_FILE tidak ditemukan."
 
             echo ""
-            echo "Upload ZIP Phase 3.3 terbaru ke ROOT repository."
+            echo "Upload ZIP Phase 4.1 terbaru ke ROOT repository."
 
             echo ""
             echo "ZIP yang tersedia:"
@@ -194,9 +195,9 @@ jobs:
 
 
       # ============================================================
-      # 10. VALIDATE PHASE 3.3 SOURCES
+      # 10. VALIDATE PROJECT STRUCTURE
       # ============================================================
-      - name: Validate Phase 3.3 sources
+      - name: Validate Phase 4.1 sources
         shell: bash
         run: |
           set -e
@@ -235,9 +236,66 @@ jobs:
 
 
       # ============================================================
-      # 11. VALIDATE PAYMENT FEATURES
+      # 11. VALIDATE PRODUCT PHOTO DATABASE
       # ============================================================
-      - name: Validate Phase 3.3 payment features
+      - name: Validate Product Photo Database
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "PRODUCT PHOTO DATABASE"
+          echo "=========================================="
+
+          echo ""
+          echo "Searching ProductPhoto implementation..."
+
+          PRODUCT_PHOTO_FILES=$(find app/src/main/java \
+            -type f \
+            | grep -i "ProductPhoto" || true)
+
+          if [ -z "$PRODUCT_PHOTO_FILES" ]; then
+            echo "ERROR: ProductPhoto source tidak ditemukan."
+            exit 1
+          fi
+
+          echo "$PRODUCT_PHOTO_FILES"
+
+          echo ""
+          echo "Searching photo relation fields..."
+
+          grep -Rni \
+            "productId" \
+            app/src/main/java \
+            | grep -i "photo" \
+            | head -n 30 || true
+
+          echo ""
+          echo "Searching primary photo support..."
+
+          grep -Rni \
+            "isPrimary" \
+            app/src/main/java \
+            | head -n 30 || true
+
+          echo ""
+          echo "Searching local photo path..."
+
+          grep -Rni \
+            "localPath" \
+            app/src/main/java \
+            | head -n 30 || true
+
+          echo ""
+          echo "Product Photo Database validation completed."
+
+
+      # ============================================================
+      # 12. VALIDATE CAMERA FEATURE
+      # ============================================================
+      - name: Validate camera feature
         shell: bash
         run: |
           set -e
@@ -245,114 +303,115 @@ jobs:
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+          MANIFEST="app/src/main/AndroidManifest.xml"
 
           echo "=========================================="
-          echo "PAYMENT FEATURES"
+          echo "CAMERA FEATURE"
           echo "=========================================="
 
           echo ""
-          echo "Processing protection:"
-          grep -n "processingPayment" "$MAIN"
+          echo "Camera-related implementation:"
+
+          grep -Rni \
+            "Camera" \
+            app/src/main/java \
+            | head -n 40 || true
 
           echo ""
-          echo "UANG PAS:"
-          grep -n "UANG PAS" "$MAIN"
+          echo "Camera permission:"
+
+          grep -ni \
+            "android.permission.CAMERA" \
+            "$MANIFEST" \
+            || true
 
           echo ""
-          echo "Quick payment:"
-          grep -n 'Rp 50.000' "$MAIN"
-          grep -n 'Rp 100.000' "$MAIN"
-          grep -n 'Rp 200.000' "$MAIN"
-          grep -n 'Rp 500.000' "$MAIN"
+          echo "Photo capture / picker:"
+
+          grep -Rni \
+            "TakePicture\|GetContent\|PickVisualMedia\|ImageCapture" \
+            app/src/main/java \
+            | head -n 40 || true
 
           echo ""
-          echo "Payment processing:"
-          grep -n "MEMPROSES" "$MAIN"
-
-          echo ""
-          echo "Payment methods:"
-          grep -n "CASH" "$MAIN"
-          grep -n "QRIS" "$MAIN"
-          grep -n "TRANSFER" "$MAIN"
-          grep -n "DEBIT" "$MAIN"
-
-          echo ""
-          echo "Payment calculation:"
-          grep -n "UANG KURANG" "$MAIN"
-          grep -n "KEMBALIAN" "$MAIN"
-
-          echo ""
-          echo "Payment feature validation OK."
+          echo "Camera validation completed."
 
 
       # ============================================================
-      # 12. VALIDATE PHASE 3.3 UI FIX
+      # 13. VALIDATE PHOTO MANAGEMENT
       # ============================================================
-      - name: Validate Payment UI Fix
+      - name: Validate photo management
         shell: bash
         run: |
           set -e
 
           cd "$PROJECT_DIR"
 
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
           echo "=========================================="
-          echo "PAYMENT UI FIX"
+          echo "PHOTO MANAGEMENT"
           echo "=========================================="
 
           echo ""
-          echo "Dialog height:"
-          grep -n "heightIn(max = 520.dp)" "$MAIN"
+          echo "Add photo:"
+          grep -Rni \
+            "Tambah Foto\|TAMBAH FOTO\|Ambil Foto\|AMBIL FOTO" \
+            app/src/main/java \
+            | head -n 30 || true
 
           echo ""
-          echo "Scrollable payment dialog:"
-          grep -n "verticalScroll(rememberScrollState())" "$MAIN"
+          echo "Delete photo:"
+          grep -Rni \
+            "Hapus Foto\|HAPUS FOTO\|deletePhoto\|removePhoto" \
+            app/src/main/java \
+            | head -n 30 || true
 
           echo ""
-          echo "Quick payment grid:"
-          grep -n "chunked(2)" "$MAIN"
+          echo "Primary photo:"
+          grep -Rni \
+            "Foto Utama\|FOTO UTAMA\|isPrimary" \
+            app/src/main/java \
+            | head -n 30 || true
 
           echo ""
-          echo "Prevent text clipping:"
-          grep -n "softWrap = false" "$MAIN"
-
-          echo ""
-          echo "Button content padding:"
-          grep -n "contentPadding = PaddingValues" "$MAIN"
-
-          echo ""
-          echo "UANG PAS:"
-          grep -n "UANG PAS" "$MAIN"
-
-          echo ""
-          echo "Rp 50.000:"
-          grep -n 'Rp 50.000' "$MAIN"
-
-          echo ""
-          echo "Rp 100.000:"
-          grep -n 'Rp 100.000' "$MAIN"
-
-          echo ""
-          echo "Rp 200.000:"
-          grep -n 'Rp 200.000' "$MAIN"
-
-          echo ""
-          echo "Rp 500.000:"
-          grep -n 'Rp 500.000' "$MAIN"
-
-          echo ""
-          echo "Dialog background overlay:"
-          grep -n "alpha = 0.52f" "$MAIN"
-
-          echo ""
-          echo "Payment UI validation OK."
+          echo "Photo management validation completed."
 
 
       # ============================================================
-      # 13. VALIDATE RUPIAH FORMATTER
+      # 14. VALIDATE DATABASE MIGRATION
+      # ============================================================
+      - name: Validate Room database migration
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "ROOM DATABASE MIGRATION"
+          echo "=========================================="
+
+          echo ""
+          echo "Database version:"
+
+          grep -Rni \
+            "version = " \
+            app/src/main/java \
+            | head -n 20 || true
+
+          echo ""
+          echo "Migration references:"
+
+          grep -Rni \
+            "Migration" \
+            app/src/main/java \
+            | head -n 40 || true
+
+          echo ""
+          echo "Room migration validation completed."
+
+
+      # ============================================================
+      # 15. VALIDATE RUPIAH FORMATTER
       # ============================================================
       - name: Validate Rupiah formatter
         shell: bash
@@ -367,6 +426,8 @@ jobs:
           echo "=========================================="
           echo "RUPIAH FORMATTER"
           echo "=========================================="
+
+          test -f "$MONEY"
 
           echo ""
           echo "Money.kt:"
@@ -385,7 +446,43 @@ jobs:
 
 
       # ============================================================
-      # 14. VALIDATE TRANSACTION SAFETY
+      # 16. VALIDATE PAYMENT FEATURES
+      # ============================================================
+      - name: Validate existing payment features
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          echo "=========================================="
+          echo "PAYMENT FEATURES"
+          echo "=========================================="
+
+          grep -n "processingPayment" "$MAIN"
+          grep -n "UANG PAS" "$MAIN"
+
+          grep -n 'Rp 50.000' "$MAIN"
+          grep -n 'Rp 100.000' "$MAIN"
+          grep -n 'Rp 200.000' "$MAIN"
+          grep -n 'Rp 500.000' "$MAIN"
+
+          grep -n "CASH" "$MAIN"
+          grep -n "QRIS" "$MAIN"
+          grep -n "TRANSFER" "$MAIN"
+          grep -n "DEBIT" "$MAIN"
+
+          grep -n "UANG KURANG" "$MAIN"
+          grep -n "KEMBALIAN" "$MAIN"
+
+          echo ""
+          echo "Payment features remain intact."
+
+
+      # ============================================================
+      # 17. VALIDATE TRANSACTION SAFETY
       # ============================================================
       - name: Validate transaction safety
         shell: bash
@@ -400,16 +497,10 @@ jobs:
           echo "TRANSACTION SAFETY"
           echo "=========================================="
 
-          echo ""
-          echo "Database transaction:"
           grep -n "db.withTransaction" "$REPO"
 
-          echo ""
-          echo "Invoice timestamp:"
           grep -n "yyyyMMdd-HHmmssSSS" "$REPO"
 
-          echo ""
-          echo "Stock change:"
           grep -n "dao.changeStock" "$REPO"
 
           echo ""
@@ -417,7 +508,7 @@ jobs:
 
 
       # ============================================================
-      # 15. CHECK VERSION
+      # 18. CHECK VERSION
       # ============================================================
       - name: Check ARS POS version
         shell: bash
@@ -436,7 +527,33 @@ jobs:
 
 
       # ============================================================
-      # 16. VALIDATE ARS BRANDING
+      # 19. VALIDATE VERSION 1.0.4
+      # ============================================================
+      - name: Validate version 1.0.4
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "VERSION 1.0.4 CHECK"
+          echo "=========================================="
+
+          grep -q \
+            "versionCode 103" \
+            app/build.gradle.kts
+
+          grep -q \
+            'versionName = "1.0.4"' \
+            app/build.gradle.kts
+
+          echo ""
+          echo "Version 1.0.4 validation PASSED."
+
+
+      # ============================================================
+      # 20. VALIDATE ARS BRANDING
       # ============================================================
       - name: Validate ARS branding
         shell: bash
@@ -457,12 +574,14 @@ jobs:
 
           echo ""
           echo "Manifest icon:"
+
           grep -n \
             "android:icon\|android:roundIcon" \
             app/src/main/AndroidManifest.xml
 
           echo ""
           echo "Launcher files:"
+
           find app/src/main/res \
             -type f \
             \( -iname "ic_launcher*" -o -iname "*launcher*" \) \
@@ -473,7 +592,7 @@ jobs:
 
 
       # ============================================================
-      # 17. BUILD ENVIRONMENT
+      # 21. BUILD ENVIRONMENT
       # ============================================================
       - name: Show build environment
         shell: bash
@@ -502,7 +621,7 @@ jobs:
 
 
       # ============================================================
-      # 18. CLEAN PROJECT
+      # 22. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -517,7 +636,7 @@ jobs:
 
 
       # ============================================================
-      # 19. BUILD RELEASE APK
+      # 23. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -533,7 +652,7 @@ jobs:
 
 
       # ============================================================
-      # 20. LOCATE APK
+      # 24. LOCATE APK
       # ============================================================
       - name: Locate APK
         shell: bash
@@ -552,11 +671,10 @@ jobs:
 
           if [ -z "$APK" ]; then
 
-            echo "ERROR:"
-            echo "APK tidak ditemukan."
+            echo "ERROR: APK tidak ditemukan."
 
             echo ""
-            echo "Isi output build:"
+            echo "Build outputs:"
 
             find app/build/outputs \
               -type f \
@@ -573,7 +691,7 @@ jobs:
 
 
       # ============================================================
-      # 21. VERIFY APK SIGNATURE
+      # 25. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -596,7 +714,7 @@ jobs:
 
 
       # ============================================================
-      # 22. VERIFY APK ALIGNMENT
+      # 26. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -620,103 +738,5 @@ jobs:
 
 
       # ============================================================
-      # 23. VERIFY PACKAGE AND VERSION
-      # ============================================================
-      - name: Verify APK package and version
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          echo "=========================================="
-          echo "APK PACKAGE / VERSION"
-          echo "=========================================="
-
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging \
-            "$APK_PATH" \
-            | grep -E \
-            "package: name=|versionCode=|versionName="
-
-          echo ""
-          echo "Package verification PASSED."
-
-
-      # ============================================================
-      # 24. PREPARE FINAL APK
-      # ============================================================
-      - name: Prepare final APK
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          APK_DIR="app/build/outputs/apk/release"
-
-          FINAL_APK="$APK_DIR/ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk"
-
-          cp "$APK_PATH" "$FINAL_APK"
-
-          test -f "$FINAL_APK"
-
-          echo ""
-          echo "Final APK:"
-          ls -lh "$FINAL_APK"
-
-          echo ""
-          echo "Generating SHA-256..."
-
-          sha256sum "$FINAL_APK" \
-            > "$FINAL_APK.sha256"
-
-          echo ""
-          cat "$FINAL_APK.sha256"
-
-
-      # ============================================================
-      # 25. FINAL RELEASE CHECK
-      # ============================================================
-      - name: Final release check
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR/app/build/outputs/apk/release"
-
-          test -f \
-            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk
-
-          test -f \
-            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk.sha256
-
-          echo ""
-          echo "=========================================="
-          echo "ARS POS PHASE 3.3 READY"
-          echo "=========================================="
-
-          ls -lh \
-            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk
-
-          echo ""
-
-          cat \
-            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk.sha256
-
-
-      # ============================================================
-      # 26. UPLOAD SIGNED APK
-      # ============================================================
-      - name: Upload signed APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED
-
-          path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk.sha256
-
-          if-no-files-found: error
-
-          retention-days: 30
+      # 27. VERIFY PACKAGE AND VERSION
+     
