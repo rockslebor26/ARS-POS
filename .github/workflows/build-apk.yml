@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 3.2 Payment
+    name: Build ARS POS Phase 3.3 Payment UI Fix
     runs-on: ubuntu-latest
 
     steps:
@@ -96,17 +96,17 @@ jobs:
 
 
       # ============================================================
-      # 7. REQUIRE PHASE 3.2 PROJECT ZIP
+      # 7. REQUIRE PHASE 3.3 PROJECT ZIP
       # ============================================================
-      - name: Require Phase 3.2 project ZIP
+      - name: Require Phase 3.3 project ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE3_2_PAYMENT_COMPLETE.zip"
+          ZIP_FILE="./ARS_POS_PHASE3_3_PAYMENT_UI_FIX_COMPLETE.zip"
 
           echo "=========================================="
-          echo "CHECK PHASE 3.2 ZIP"
+          echo "CHECK PHASE 3.3 ZIP"
           echo "=========================================="
 
           if [ ! -f "$ZIP_FILE" ]; then
@@ -114,7 +114,7 @@ jobs:
             echo "$ZIP_FILE tidak ditemukan."
 
             echo ""
-            echo "Upload ZIP Phase 3.2 terbaru ke ROOT repository."
+            echo "Upload ZIP Phase 3.3 terbaru ke ROOT repository."
 
             echo ""
             echo "ZIP yang tersedia:"
@@ -123,6 +123,7 @@ jobs:
             exit 1
           fi
 
+          echo ""
           echo "ZIP ditemukan:"
           ls -lh "$ZIP_FILE"
 
@@ -193,9 +194,9 @@ jobs:
 
 
       # ============================================================
-      # 10. VALIDATE PHASE 3.2 SOURCES
+      # 10. VALIDATE PHASE 3.3 SOURCES
       # ============================================================
-      - name: Validate Phase 3.2 sources
+      - name: Validate Phase 3.3 sources
         shell: bash
         run: |
           set -e
@@ -236,7 +237,7 @@ jobs:
       # ============================================================
       # 11. VALIDATE PAYMENT FEATURES
       # ============================================================
-      - name: Validate Phase 3.2 payment features
+      - name: Validate Phase 3.3 payment features
         shell: bash
         run: |
           set -e
@@ -287,7 +288,71 @@ jobs:
 
 
       # ============================================================
-      # 12. VALIDATE RUPIAH FORMATTER
+      # 12. VALIDATE PHASE 3.3 UI FIX
+      # ============================================================
+      - name: Validate Payment UI Fix
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          echo "=========================================="
+          echo "PAYMENT UI FIX"
+          echo "=========================================="
+
+          echo ""
+          echo "Dialog height:"
+          grep -n "heightIn(max = 520.dp)" "$MAIN"
+
+          echo ""
+          echo "Scrollable payment dialog:"
+          grep -n "verticalScroll(rememberScrollState())" "$MAIN"
+
+          echo ""
+          echo "Quick payment grid:"
+          grep -n "chunked(2)" "$MAIN"
+
+          echo ""
+          echo "Prevent text clipping:"
+          grep -n "softWrap = false" "$MAIN"
+
+          echo ""
+          echo "Button content padding:"
+          grep -n "contentPadding = PaddingValues" "$MAIN"
+
+          echo ""
+          echo "UANG PAS:"
+          grep -n "UANG PAS" "$MAIN"
+
+          echo ""
+          echo "Rp 50.000:"
+          grep -n 'Rp 50.000' "$MAIN"
+
+          echo ""
+          echo "Rp 100.000:"
+          grep -n 'Rp 100.000' "$MAIN"
+
+          echo ""
+          echo "Rp 200.000:"
+          grep -n 'Rp 200.000' "$MAIN"
+
+          echo ""
+          echo "Rp 500.000:"
+          grep -n 'Rp 500.000' "$MAIN"
+
+          echo ""
+          echo "Dialog background overlay:"
+          grep -n "alpha = 0.52f" "$MAIN"
+
+          echo ""
+          echo "Payment UI validation OK."
+
+
+      # ============================================================
+      # 13. VALIDATE RUPIAH FORMATTER
       # ============================================================
       - name: Validate Rupiah formatter
         shell: bash
@@ -312,7 +377,7 @@ jobs:
           grep -n "formatRupiah" "$MAIN"
 
           echo ""
-          echo "Checking Indonesian locale:"
+          echo "Indonesian locale:"
           grep -n 'Locale("id", "ID")' "$MONEY"
 
           echo ""
@@ -320,7 +385,7 @@ jobs:
 
 
       # ============================================================
-      # 13. VALIDATE TRANSACTION SAFETY
+      # 14. VALIDATE TRANSACTION SAFETY
       # ============================================================
       - name: Validate transaction safety
         shell: bash
@@ -352,7 +417,7 @@ jobs:
 
 
       # ============================================================
-      # 14. CHECK VERSION
+      # 15. CHECK VERSION
       # ============================================================
       - name: Check ARS POS version
         shell: bash
@@ -371,7 +436,7 @@ jobs:
 
 
       # ============================================================
-      # 15. CHECK ARS BRANDING
+      # 16. VALIDATE ARS BRANDING
       # ============================================================
       - name: Validate ARS branding
         shell: bash
@@ -408,7 +473,7 @@ jobs:
 
 
       # ============================================================
-      # 16. BUILD ENVIRONMENT
+      # 17. BUILD ENVIRONMENT
       # ============================================================
       - name: Show build environment
         shell: bash
@@ -437,7 +502,7 @@ jobs:
 
 
       # ============================================================
-      # 17. CLEAN PROJECT
+      # 18. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -452,7 +517,7 @@ jobs:
 
 
       # ============================================================
-      # 18. BUILD RELEASE APK
+      # 19. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -468,7 +533,7 @@ jobs:
 
 
       # ============================================================
-      # 19. LOCATE APK
+      # 20. LOCATE APK
       # ============================================================
       - name: Locate APK
         shell: bash
@@ -486,7 +551,12 @@ jobs:
             | head -n 1)
 
           if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
+
+            echo "ERROR:"
+            echo "APK tidak ditemukan."
+
+            echo ""
+            echo "Isi output build:"
 
             find app/build/outputs \
               -type f \
@@ -503,7 +573,7 @@ jobs:
 
 
       # ============================================================
-      # 20. VERIFY APK SIGNATURE
+      # 21. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -526,7 +596,7 @@ jobs:
 
 
       # ============================================================
-      # 21. VERIFY APK ALIGNMENT
+      # 22. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -550,7 +620,7 @@ jobs:
 
 
       # ============================================================
-      # 22. VERIFY PACKAGE AND VERSION
+      # 23. VERIFY PACKAGE AND VERSION
       # ============================================================
       - name: Verify APK package and version
         shell: bash
@@ -574,7 +644,7 @@ jobs:
 
 
       # ============================================================
-      # 23. PREPARE FINAL APK
+      # 24. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
@@ -585,7 +655,7 @@ jobs:
 
           APK_DIR="app/build/outputs/apk/release"
 
-          FINAL_APK="$APK_DIR/ARS-POS-1.0.2-PAYMENT-SIGNED.apk"
+          FINAL_APK="$APK_DIR/ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk"
 
           cp "$APK_PATH" "$FINAL_APK"
 
@@ -606,7 +676,7 @@ jobs:
 
 
       # ============================================================
-      # 24. FINAL RELEASE CHECK
+      # 25. FINAL RELEASE CHECK
       # ============================================================
       - name: Final release check
         shell: bash
@@ -616,36 +686,36 @@ jobs:
           cd "$PROJECT_DIR/app/build/outputs/apk/release"
 
           test -f \
-            ARS-POS-1.0.2-PAYMENT-SIGNED.apk
+            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk
 
           test -f \
-            ARS-POS-1.0.2-PAYMENT-SIGNED.apk.sha256
+            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk.sha256
 
           echo ""
           echo "=========================================="
-          echo "ARS POS PHASE 3.2 READY"
+          echo "ARS POS PHASE 3.3 READY"
           echo "=========================================="
 
           ls -lh \
-            ARS-POS-1.0.2-PAYMENT-SIGNED.apk
+            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk
 
           echo ""
 
           cat \
-            ARS-POS-1.0.2-PAYMENT-SIGNED.apk.sha256
+            ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk.sha256
 
 
       # ============================================================
-      # 25. UPLOAD SIGNED APK
+      # 26. UPLOAD SIGNED APK
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-1.0.2-PAYMENT-SIGNED
+          name: ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.2-PAYMENT-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.2-PAYMENT-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.3-PAYMENT-UI-FIX-SIGNED.apk.sha256
 
           if-no-files-found: error
 
