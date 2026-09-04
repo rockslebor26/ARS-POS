@@ -34,15 +34,10 @@ jobs:
 
 
       # ============================================================
-      # 3. SETUP ANDROID COMMAND LINE TOOLS
-      #
-      # Package SDK tidak dipasang di sini.
-      # Kita install secara manual pada step berikutnya.
+      # 3. SETUP ANDROID SDK TOOLS
       # ============================================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: ''
 
 
       # ============================================================
@@ -61,13 +56,15 @@ jobs:
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
           echo ""
-          echo "sdkmanager:"
+          echo "sdkmanager version:"
           sdkmanager --version
 
           echo ""
-          echo "Installing required packages..."
-
+          echo "Accepting Android SDK licenses..."
           yes | sdkmanager --licenses >/dev/null || true
+
+          echo ""
+          echo "Installing required packages..."
 
           sdkmanager --install \
             "platform-tools" \
@@ -75,14 +72,13 @@ jobs:
             "build-tools;35.0.0"
 
           echo ""
-          echo "=========================================="
-          echo "VERIFY SDK"
-          echo "=========================================="
+          echo "Verifying Android SDK..."
 
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
           test -f "$ANDROID_HOME/platform-tools/adb"
 
+          echo ""
           echo "Android SDK 35 OK."
           echo "Build Tools 35.0.0 OK."
           echo "Platform Tools OK."
@@ -112,50 +108,72 @@ jobs:
           pwd
 
           echo ""
-          echo "Files:"
+          echo "Repository files:"
           ls -lah
 
           echo ""
           echo "ZIP FILES:"
           find . \
-            -maxdepth 2 \
             -type f \
             -iname "*.zip" \
             -print
 
 
       # ============================================================
-      # 7. FIND PHASE 1 BRANDING ZIP
+      # 7. FIND COMPLETE PHASE 1 ZIP
       # ============================================================
-      - name: Find Phase 1 ZIP
+      - name: Find Phase 1 project ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE=$(find . \
-            -type f \
-            -iname "*PHASE1*BRANDING*.zip" \
-            | head -n 1)
+          ZIP_FILE=""
+
+          # Prioritas utama:
+          # ZIP COMPLETE FIXED terbaru
+          EXACT_ZIP="./ARS_POS_PHASE1_COMPLETE_FIXED.zip"
+
+          if [ -f "$EXACT_ZIP" ]; then
+
+            ZIP_FILE="$EXACT_ZIP"
+
+          else
+
+            echo "Complete Fixed ZIP tidak ditemukan."
+            echo "Mencari ZIP Phase 1 Branding sebagai fallback..."
+
+            ZIP_FILE=$(find . \
+              -type f \
+              -iname "*PHASE1*BRANDING*.zip" \
+              | head -n 1)
+
+          fi
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP PHASE1 BRANDING tidak ditemukan."
+
+            echo "ERROR: ZIP Phase 1 tidak ditemukan."
+
             echo ""
             echo "ZIP yang tersedia:"
+
             find . \
               -type f \
               -iname "*.zip" \
               -print
+
             exit 1
+
           fi
 
-          echo "ZIP ditemukan:"
+          echo ""
+          echo "ZIP YANG DIGUNAKAN:"
           echo "$ZIP_FILE"
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 8. EXTRACT PHASE 1 PROJECT
+      # 8. EXTRACT COMPLETE PROJECT
       # ============================================================
       - name: Extract Phase 1 project
         shell: bash
@@ -163,14 +181,15 @@ jobs:
           set -e
 
           echo "=========================================="
-          echo "EXTRACT PHASE 1"
+          echo "EXTRACT PROJECT"
           echo "=========================================="
 
-          echo "ZIP:"
-          echo "$ZIP_FILE"
-
           rm -rf extracted
+
           mkdir -p extracted
+
+          echo "Extracting:"
+          echo "$ZIP_FILE"
 
           unzip -o "$ZIP_FILE" -d extracted
 
@@ -179,6 +198,7 @@ jobs:
 
           echo ""
           echo "Project files:"
+
           find extracted \
             -maxdepth 4 \
             -type f \
@@ -203,22 +223,26 @@ jobs:
             | head -n 1)
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: settings.gradle.kts tidak ditemukan."
+
+            echo "ERROR:"
+            echo "settings.gradle.kts tidak ditemukan."
 
             echo ""
             echo "Isi extracted:"
+
             find extracted \
-              -maxdepth 6 \
+              -maxdepth 7 \
               -type f \
               | sort
 
             exit 1
+
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
           echo ""
-          echo "settings.gradle.kts:"
+          echo "settings.gradle.kts ditemukan:"
           echo "$SETTINGS_FILE"
 
           echo ""
@@ -242,6 +266,8 @@ jobs:
           echo "VALIDATE PROJECT"
           echo "=========================================="
 
+          echo ""
+          echo "Project directory:"
           pwd
 
           echo ""
@@ -256,12 +282,49 @@ jobs:
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
 
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
+
           echo ""
           echo "Gradle project structure OK."
+          echo "MainActivity.kt ditemukan."
 
 
       # ============================================================
-      # 11. CHECK ARS BRANDING
+      # 11. CHECK MAINACTIVITY
+      # ============================================================
+      - name: Check MainActivity
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "MAINACTIVITY CHECK"
+          echo "=========================================="
+
+          MAIN_FILE="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          echo ""
+          echo "File:"
+          echo "$MAIN_FILE"
+
+          echo ""
+          echo "Jumlah baris:"
+          wc -l "$MAIN_FILE"
+
+          echo ""
+          echo "App function:"
+          grep -n "fun App" "$MAIN_FILE" || true
+
+          echo ""
+          echo "MainActivity:"
+          grep -n "class MainActivity" "$MAIN_FILE" || true
+
+
+      # ============================================================
+      # 12. CHECK ARS BRANDING
       # ============================================================
       - name: Check ARS branding
         shell: bash
@@ -275,32 +338,35 @@ jobs:
           echo "=========================================="
 
           echo ""
-          echo "Launcher icons:"
+          echo "LAUNCHER ICONS:"
+          
           find app/src/main/res \
             -type f \
             \( \
-              -iname "*launcher*" \
-              -o \
               -iname "ic_launcher*" \
+              -o \
+              -iname "*launcher*" \
             \) \
             -print || true
 
           echo ""
-          echo "ARS background:"
+          echo "ARS BACKGROUND:"
+
           find app/src/main/res \
             -type f \
             -iname "*ars_background*" \
             -print || true
 
           echo ""
-          echo "Android Manifest icon:"
+          echo "ANDROID MANIFEST:"
+
           grep -n \
             "android:icon\|android:roundIcon" \
             app/src/main/AndroidManifest.xml || true
 
 
       # ============================================================
-      # 12. CHECK JAVA / GRADLE / ANDROID
+      # 13. CHECK BUILD ENVIRONMENT
       # ============================================================
       - name: Check build environment
         shell: bash
@@ -322,14 +388,15 @@ jobs:
 
           echo ""
           echo "=========================================="
-          echo "ANDROID SDK"
+          echo "ANDROID"
           echo "=========================================="
 
-          sdkmanager --list_installed | head -n 100
+          sdkmanager --list_installed \
+            | head -n 100
 
 
       # ============================================================
-      # 13. CLEAN PROJECT
+      # 14. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -338,13 +405,17 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          echo "=========================================="
+          echo "CLEAN"
+          echo "=========================================="
+
           gradle clean \
             --no-daemon \
             --stacktrace
 
 
       # ============================================================
-      # 14. BUILD RELEASE APK
+      # 15. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -364,7 +435,7 @@ jobs:
 
 
       # ============================================================
-      # 15. CHECK APK OUTPUT
+      # 16. CHECK APK OUTPUT
       # ============================================================
       - name: Check APK output
         shell: bash
@@ -391,7 +462,7 @@ jobs:
 
 
       # ============================================================
-      # 16. VERIFY APK SIGNATURE
+      # 17. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -407,10 +478,14 @@ jobs:
             | head -n 1)
 
           if [ -z "$APK" ]; then
+
             echo "ERROR: APK tidak ditemukan."
+
             exit 1
+
           fi
 
+          echo ""
           echo "APK:"
           echo "$APK"
 
@@ -426,7 +501,7 @@ jobs:
 
 
       # ============================================================
-      # 17. VERIFY APK ALIGNMENT
+      # 18. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -449,7 +524,7 @@ jobs:
 
 
       # ============================================================
-      # 18. PREPARE FINAL APK
+      # 19. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
@@ -465,8 +540,11 @@ jobs:
             | head -n 1)
 
           if [ -z "$APK" ]; then
+
             echo "ERROR: APK tidak ditemukan."
+
             exit 1
+
           fi
 
           FINAL_APK="app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk"
@@ -482,7 +560,7 @@ jobs:
 
 
       # ============================================================
-      # 19. GENERATE SHA-256
+      # 20. GENERATE SHA-256
       # ============================================================
       - name: Generate APK checksum
         shell: bash
@@ -504,7 +582,7 @@ jobs:
 
 
       # ============================================================
-      # 20. UPLOAD SIGNED APK
+      # 21. UPLOAD SIGNED APK
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
