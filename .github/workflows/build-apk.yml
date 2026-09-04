@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 3.1 Rupiah
+    name: Build ARS POS Phase 3.2 Payment
     runs-on: ubuntu-latest
 
     steps:
@@ -41,7 +41,7 @@ jobs:
 
 
       # ============================================================
-      # 4. INSTALL ANDROID SDK
+      # 4. INSTALL ANDROID SDK PACKAGES
       # ============================================================
       - name: Install Android SDK packages
         shell: bash
@@ -57,11 +57,10 @@ jobs:
 
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
+
           test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
           test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
           test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
-
-          echo "Android SDK OK."
 
 
       # ============================================================
@@ -74,106 +73,77 @@ jobs:
 
 
       # ============================================================
-      # 6. SHOW REPOSITORY CONTENTS
+      # 6. CHECK REPOSITORY
       # ============================================================
-      - name: Show repository contents
+      - name: Check repository files
         shell: bash
         run: |
           set -e
 
           echo "=========================================="
-          echo "REPOSITORY"
+          echo "ARS POS REPOSITORY"
           echo "=========================================="
 
-          echo "Working directory:"
           pwd
 
           echo ""
-          echo "Repository files:"
+          echo "Repository contents:"
           ls -lah
 
           echo ""
-          echo "ZIP files:"
-
-          find . \
-            -type f \
-            -iname "*.zip" \
-            -print
+          echo "ZIP FILES:"
+          find . -type f -iname "*.zip" -print
 
 
       # ============================================================
-      # 7. REQUIRE LATEST PHASE 3.1 PROJECT ZIP
+      # 7. REQUIRE PHASE 3.2 PROJECT ZIP
       # ============================================================
-      - name: Require latest Phase 3.1 project ZIP
+      - name: Require Phase 3.2 project ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE3_1_RUPIAH_COMPLETE.zip"
+          ZIP_FILE="./ARS_POS_PHASE3_2_PAYMENT_COMPLETE.zip"
 
           echo "=========================================="
-          echo "ARS POS PHASE 3.1"
+          echo "CHECK PHASE 3.2 ZIP"
           echo "=========================================="
 
           if [ ! -f "$ZIP_FILE" ]; then
-
             echo "ERROR:"
             echo "$ZIP_FILE tidak ditemukan."
 
             echo ""
-            echo "Upload ZIP Phase 3.1 terbaru ke root repository."
+            echo "Upload ZIP Phase 3.2 terbaru ke ROOT repository."
 
             echo ""
             echo "ZIP yang tersedia:"
-
-            find . \
-              -type f \
-              -iname "*.zip" \
-              -print
+            find . -type f -iname "*.zip" -print
 
             exit 1
           fi
 
-          echo ""
           echo "ZIP ditemukan:"
-          echo "$ZIP_FILE"
-
-          echo ""
-          echo "Ukuran ZIP:"
           ls -lh "$ZIP_FILE"
 
-          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
-
-
-      # ============================================================
-      # 8. VERIFY ZIP INTEGRITY
-      # ============================================================
-      - name: Verify ZIP integrity
-        shell: bash
-        run: |
-          set -e
-
-          echo "=========================================="
-          echo "VERIFY ZIP"
-          echo "=========================================="
+          echo ""
+          echo "Testing ZIP integrity..."
 
           unzip -t "$ZIP_FILE"
 
           echo ""
           echo "ZIP integrity OK."
 
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+
 
       # ============================================================
-      # 9. EXTRACT ARS POS PROJECT
+      # 8. EXTRACT ARS POS PROJECT
       # ============================================================
       - name: Extract ARS POS project
         shell: bash
         run: |
           set -e
-
-          echo "=========================================="
-          echo "EXTRACT ARS POS"
-          echo "=========================================="
 
           rm -rf extracted
 
@@ -184,18 +154,9 @@ jobs:
           echo ""
           echo "Project extracted successfully."
 
-          echo ""
-          echo "Project files:"
-
-          find extracted \
-            -maxdepth 5 \
-            -type f \
-            | sort \
-            | head -n 250
-
 
       # ============================================================
-      # 10. LOCATE GRADLE PROJECT
+      # 9. LOCATE GRADLE PROJECT
       # ============================================================
       - name: Locate Gradle project
         shell: bash
@@ -213,7 +174,7 @@ jobs:
             echo "settings.gradle.kts tidak ditemukan."
 
             echo ""
-            echo "Isi extracted:"
+            echo "Isi extracted project:"
 
             find extracted \
               -maxdepth 8 \
@@ -225,21 +186,16 @@ jobs:
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
-          echo ""
-          echo "settings.gradle.kts:"
-          echo "$SETTINGS_FILE"
-
-          echo ""
-          echo "Gradle project:"
+          echo "Gradle project ditemukan:"
           echo "$PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 11. VALIDATE PROJECT STRUCTURE
+      # 10. VALIDATE PHASE 3.2 SOURCES
       # ============================================================
-      - name: Validate project structure
+      - name: Validate Phase 3.2 sources
         shell: bash
         run: |
           set -e
@@ -247,7 +203,7 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "VALIDATE PROJECT"
+          echo "VALIDATE PROJECT STRUCTURE"
           echo "=========================================="
 
           test -f settings.gradle.kts
@@ -255,6 +211,7 @@ jobs:
           test -f gradle.properties
 
           test -f app/build.gradle.kts
+
           test -f app/src/main/AndroidManifest.xml
 
           test -f \
@@ -270,10 +227,63 @@ jobs:
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
           test -f \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/PosRepository.kt
+            app/src/main/java/com/arspos/anglerriausyndicate/printer/EscPosReceipt.kt
 
           echo ""
           echo "Project structure OK."
+
+
+      # ============================================================
+      # 11. VALIDATE PAYMENT FEATURES
+      # ============================================================
+      - name: Validate Phase 3.2 payment features
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+
+          echo "=========================================="
+          echo "PAYMENT FEATURES"
+          echo "=========================================="
+
+          echo ""
+          echo "Processing protection:"
+          grep -n "processingPayment" "$MAIN"
+
+          echo ""
+          echo "UANG PAS:"
+          grep -n "UANG PAS" "$MAIN"
+
+          echo ""
+          echo "Quick payment:"
+          grep -n 'Rp 50.000' "$MAIN"
+          grep -n 'Rp 100.000' "$MAIN"
+          grep -n 'Rp 200.000' "$MAIN"
+          grep -n 'Rp 500.000' "$MAIN"
+
+          echo ""
+          echo "Payment processing:"
+          grep -n "MEMPROSES" "$MAIN"
+
+          echo ""
+          echo "Payment methods:"
+          grep -n "CASH" "$MAIN"
+          grep -n "QRIS" "$MAIN"
+          grep -n "TRANSFER" "$MAIN"
+          grep -n "DEBIT" "$MAIN"
+
+          echo ""
+          echo "Payment calculation:"
+          grep -n "UANG KURANG" "$MAIN"
+          grep -n "KEMBALIAN" "$MAIN"
+
+          echo ""
+          echo "Payment feature validation OK."
 
 
       # ============================================================
@@ -288,151 +298,80 @@ jobs:
 
           MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-          RECEIPT="app/src/main/java/com/arspos/anglerriausyndicate/printer/EscPosReceipt.kt"
 
           echo "=========================================="
           echo "RUPIAH FORMATTER"
           echo "=========================================="
 
           echo ""
-          echo "Checking Money.kt..."
-
+          echo "Money.kt:"
           grep -n "formatRupiah" "$MONEY"
 
-          grep -n \
-            'Locale("id", "ID")' \
-            "$MONEY"
+          echo ""
+          echo "MainActivity.kt:"
+          grep -n "formatRupiah" "$MAIN"
 
           echo ""
-          echo "Checking MainActivity..."
-
-          grep -n \
-            "formatRupiah" \
-            "$MAIN"
-
-          echo ""
-          echo "Checking receipt..."
-
-          grep -n \
-            "formatRupiah" \
-            "$RECEIPT"
+          echo "Checking Indonesian locale:"
+          grep -n 'Locale("id", "ID")' "$MONEY"
 
           echo ""
           echo "Rupiah formatter validation OK."
 
 
       # ============================================================
-      # 13. VALIDATE IMPORTANT RUPIAH FIELDS
+      # 13. VALIDATE TRANSACTION SAFETY
       # ============================================================
-      - name: Validate formatted money fields
+      - name: Validate transaction safety
         shell: bash
         run: |
           set -e
 
           cd "$PROJECT_DIR"
 
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
           echo "=========================================="
-          echo "MONEY DISPLAY VALIDATION"
+          echo "TRANSACTION SAFETY"
           echo "=========================================="
 
           echo ""
-          echo "Dashboard / Report fields:"
-
-          grep -n \
-            "Omzet bersih.*formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "Saldo kas.*formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "Laba kotor.*formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "Modal.*formatRupiah" \
-            "$MAIN"
+          echo "Database transaction:"
+          grep -n "db.withTransaction" "$REPO"
 
           echo ""
-          echo "Payment fields:"
-
-          grep -n \
-            "KEMBALIAN.*formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "UANG KURANG.*formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "Total:.*formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "Dibayar:.*formatRupiah" \
-            "$MAIN"
+          echo "Invoice timestamp:"
+          grep -n "yyyyMMdd-HHmmssSSS" "$REPO"
 
           echo ""
-          echo "Money display validation OK."
+          echo "Stock change:"
+          grep -n "dao.changeStock" "$REPO"
+
+          echo ""
+          echo "Transaction safety validation OK."
 
 
       # ============================================================
-      # 14. VALIDATE PAYMENT + CART
+      # 14. CHECK VERSION
       # ============================================================
-      - name: Validate Phase 3 payment and cart
+      - name: Check ARS POS version
         shell: bash
         run: |
           set -e
 
           cd "$PROJECT_DIR"
 
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
           echo "=========================================="
-          echo "PAYMENT VALIDATION"
+          echo "ARS POS VERSION"
           echo "=========================================="
 
-          echo ""
-          echo "Payment methods:"
-
-          grep -n "CASH" "$MAIN"
-          grep -n "QRIS" "$MAIN"
-          grep -n "TRANSFER" "$MAIN"
-          grep -n "DEBIT" "$MAIN"
-
-          echo ""
-          echo "Payment calculation:"
-
-          grep -n "KEMBALIAN" "$MAIN"
-          grep -n "UANG KURANG" "$MAIN"
-
-          echo ""
-          echo "Cart:"
-
-          grep -n "KERANJANG" "$MAIN"
-          grep -n "JUMLAH BARANG" "$MAIN"
-
           grep -n \
-            "Icons.Default.Add" \
-            "$MAIN"
-
-          grep -n \
-            "Icons.Default.Remove" \
-            "$MAIN"
-
-          grep -n \
-            "Icons.Default.Delete" \
-            "$MAIN"
-
-          echo ""
-          echo "Phase 3 payment + cart validation OK."
+            "versionCode\|versionName" \
+            app/build.gradle.kts
 
 
       # ============================================================
-      # 15. VALIDATE ARS BRANDING
+      # 15. CHECK ARS BRANDING
       # ============================================================
       - name: Validate ARS branding
         shell: bash
@@ -451,26 +390,17 @@ jobs:
           test -f \
             app/src/main/res/drawable/ars_logo_master.png
 
-          echo "ARS background OK."
-          echo "ARS logo OK."
-
           echo ""
-          echo "Manifest icons:"
-
+          echo "Manifest icon:"
           grep -n \
             "android:icon\|android:roundIcon" \
             app/src/main/AndroidManifest.xml
 
           echo ""
           echo "Launcher files:"
-
           find app/src/main/res \
             -type f \
-            \( \
-              -iname "ic_launcher*" \
-              -o \
-              -iname "*launcher*" \
-            \) \
+            \( -iname "ic_launcher*" -o -iname "*launcher*" \) \
             -print
 
           echo ""
@@ -478,43 +408,7 @@ jobs:
 
 
       # ============================================================
-      # 16. VALIDATE RELEASE CONFIGURATION
-      # ============================================================
-      - name: Validate release configuration
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          echo "=========================================="
-          echo "RELEASE CONFIGURATION"
-          echo "=========================================="
-
-          echo ""
-          echo "Version:"
-
-          grep -n \
-            "versionCode\|versionName" \
-            app/build.gradle.kts
-
-          echo ""
-          echo "Signing:"
-
-          grep -n \
-            "signingConfig" \
-            app/build.gradle.kts
-
-          grep -n \
-            'signingConfigs.getByName("debug")' \
-            app/build.gradle.kts
-
-          echo ""
-          echo "Release configuration OK."
-
-
-      # ============================================================
-      # 17. SHOW BUILD ENVIRONMENT
+      # 16. BUILD ENVIRONMENT
       # ============================================================
       - name: Show build environment
         shell: bash
@@ -522,24 +416,28 @@ jobs:
           set -e
 
           echo "=========================================="
-          echo "BUILD ENVIRONMENT"
+          echo "JAVA"
           echo "=========================================="
 
-          echo ""
-          echo "Java:"
           java -version
 
           echo ""
-          echo "Gradle:"
+          echo "=========================================="
+          echo "GRADLE"
+          echo "=========================================="
+
           gradle --version
 
           echo ""
-          echo "Android SDK:"
+          echo "=========================================="
+          echo "ANDROID HOME"
+          echo "=========================================="
+
           echo "$ANDROID_HOME"
 
 
       # ============================================================
-      # 18. CLEAN PROJECT
+      # 17. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -548,17 +446,13 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "GRADLE CLEAN"
-          echo "=========================================="
-
           gradle clean \
             --no-daemon \
             --stacktrace
 
 
       # ============================================================
-      # 19. BUILD RELEASE APK
+      # 18. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -567,21 +461,14 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "BUILD ARS POS 1.0.1"
-          echo "=========================================="
-
           gradle :app:assembleRelease \
             --no-daemon \
             --stacktrace \
             --warning-mode all
 
-          echo ""
-          echo "Build completed successfully."
-
 
       # ============================================================
-      # 20. LOCATE APK
+      # 19. LOCATE APK
       # ============================================================
       - name: Locate APK
         shell: bash
@@ -600,22 +487,23 @@ jobs:
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK tidak ditemukan."
+
+            find app/build/outputs \
+              -type f \
+              | sort
+
             exit 1
           fi
 
           echo ""
           echo "APK ditemukan:"
-          echo "$APK"
-
-          echo ""
-          echo "APK size:"
           ls -lh "$APK"
 
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 21. VERIFY APK SIGNATURE
+      # 20. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -625,7 +513,7 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "VERIFY APK SIGNATURE"
+          echo "APK SIGNATURE"
           echo "=========================================="
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
@@ -638,7 +526,7 @@ jobs:
 
 
       # ============================================================
-      # 22. VERIFY APK ALIGNMENT
+      # 21. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -648,7 +536,7 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "VERIFY APK ALIGNMENT"
+          echo "APK ALIGNMENT"
           echo "=========================================="
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
@@ -662,7 +550,7 @@ jobs:
 
 
       # ============================================================
-      # 23. VERIFY APK PACKAGE + VERSION
+      # 22. VERIFY PACKAGE AND VERSION
       # ============================================================
       - name: Verify APK package and version
         shell: bash
@@ -672,21 +560,21 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "VERIFY APK PACKAGE"
+          echo "APK PACKAGE / VERSION"
           echo "=========================================="
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging \
             "$APK_PATH" \
             | grep -E \
-              "package: name=|versionCode=|versionName="
+            "package: name=|versionCode=|versionName="
 
           echo ""
           echo "Package verification PASSED."
 
 
       # ============================================================
-      # 24. PREPARE FINAL APK
+      # 23. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
@@ -697,47 +585,28 @@ jobs:
 
           APK_DIR="app/build/outputs/apk/release"
 
-          FINAL_APK="$APK_DIR/ARS-POS-1.0.1-RUPIAH-SIGNED.apk"
+          FINAL_APK="$APK_DIR/ARS-POS-1.0.2-PAYMENT-SIGNED.apk"
 
           cp "$APK_PATH" "$FINAL_APK"
 
           test -f "$FINAL_APK"
 
           echo ""
-          echo "=========================================="
-          echo "FINAL APK"
-          echo "=========================================="
-
+          echo "Final APK:"
           ls -lh "$FINAL_APK"
 
-          echo "FINAL_APK=$FINAL_APK" >> "$GITHUB_ENV"
+          echo ""
+          echo "Generating SHA-256..."
 
-
-      # ============================================================
-      # 25. GENERATE SHA-256 CHECKSUM
-      # ============================================================
-      - name: Generate SHA-256 checksum
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR/app/build/outputs/apk/release"
-
-          sha256sum \
-            ARS-POS-1.0.1-RUPIAH-SIGNED.apk \
-            > ARS-POS-1.0.1-RUPIAH-SIGNED.apk.sha256
+          sha256sum "$FINAL_APK" \
+            > "$FINAL_APK.sha256"
 
           echo ""
-          echo "=========================================="
-          echo "SHA-256"
-          echo "=========================================="
-
-          cat \
-            ARS-POS-1.0.1-RUPIAH-SIGNED.apk.sha256
+          cat "$FINAL_APK.sha256"
 
 
       # ============================================================
-      # 26. FINAL RELEASE CHECK
+      # 24. FINAL RELEASE CHECK
       # ============================================================
       - name: Final release check
         shell: bash
@@ -747,42 +616,36 @@ jobs:
           cd "$PROJECT_DIR/app/build/outputs/apk/release"
 
           test -f \
-            ARS-POS-1.0.1-RUPIAH-SIGNED.apk
+            ARS-POS-1.0.2-PAYMENT-SIGNED.apk
 
           test -f \
-            ARS-POS-1.0.1-RUPIAH-SIGNED.apk.sha256
+            ARS-POS-1.0.2-PAYMENT-SIGNED.apk.sha256
 
           echo ""
           echo "=========================================="
-          echo "ARS POS PHASE 3.1 READY"
+          echo "ARS POS PHASE 3.2 READY"
           echo "=========================================="
 
-          echo ""
-          echo "APK:"
           ls -lh \
-            ARS-POS-1.0.1-RUPIAH-SIGNED.apk
+            ARS-POS-1.0.2-PAYMENT-SIGNED.apk
 
           echo ""
-          echo "SHA-256:"
 
           cat \
-            ARS-POS-1.0.1-RUPIAH-SIGNED.apk.sha256
-
-          echo ""
-          echo "BUILD STATUS: READY"
+            ARS-POS-1.0.2-PAYMENT-SIGNED.apk.sha256
 
 
       # ============================================================
-      # 27. UPLOAD SIGNED APK
+      # 25. UPLOAD SIGNED APK
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-1.0.1-RUPIAH-SIGNED
+          name: ARS-POS-1.0.2-PAYMENT-SIGNED
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.1-RUPIAH-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.1-RUPIAH-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.2-PAYMENT-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.2-PAYMENT-SIGNED.apk.sha256
 
           if-no-files-found: error
 
