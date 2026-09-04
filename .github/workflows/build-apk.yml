@@ -17,290 +17,149 @@ jobs:
     steps:
 
       # ============================================================
-      # 1. CHECKOUT SOURCE
+      # 1. CHECKOUT SOURCE CODE
       # ============================================================
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
 
       # ============================================================
-      # 2. JAVA 17
+      # 2. SETUP JAVA 17
       # ============================================================
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
 
       # ============================================================
-      # 3. ANDROID SDK
+      # 3. SETUP ANDROID SDK
       # ============================================================
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
 
       # ============================================================
-      # 4. INSTALL ANDROID SDK COMPONENTS
+      # 4. SETUP GRADLE
+      #
+      # Project kita menggunakan:
+      # Android Gradle Plugin 8.7.3
+      #
+      # Gradle 8.9 adalah versi yang kompatibel.
       # ============================================================
-      - name: Install Android SDK components
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+
+
+      # ============================================================
+      # 5. CEK ENVIRONMENT
+      # ============================================================
+      - name: Check build environment
         run: |
-          yes | sdkmanager --licenses || true
+          echo "=== JAVA ==="
+          java -version
 
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-35"
-          sdkmanager "build-tools;35.0.0"
+          echo ""
+          echo "=== GRADLE ==="
+          gradle --version
+
+          echo ""
+          echo "=== ANDROID SDK ==="
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+          echo ""
+          echo "=== PROJECT ==="
+          ls -la
+
+          echo ""
+          echo "=== APP SOURCE ==="
+          find app/src/main -maxdepth 3 -type f | sort
 
 
       # ============================================================
-      # 5. FIND / EXTRACT ARS POS PROJECT
+      # 6. VALIDASI STRUKTUR PROJECT
       # ============================================================
-      - name: Prepare ARS POS source
-        shell: bash
+      - name: Validate Gradle project
         run: |
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
 
-          echo "=========================================="
-          echo " MENCARI PROJECT ARS POS"
-          echo "=========================================="
-
-          PROJECT_DIR=""
-
-          # --------------------------------------------------------
-          # Jika settings.gradle.kts sudah ada di root repository
-          # --------------------------------------------------------
-          if [ -f "settings.gradle.kts" ] || [ -f "settings.gradle" ]; then
-
-            echo "Project Gradle ditemukan langsung di root repository."
-
-            PROJECT_DIR="$GITHUB_WORKSPACE"
-
-          else
-
-            echo "Project belum berada di root."
-            echo "Mencari file ZIP ARS POS..."
-
-            ZIP_FILE=$(find "$GITHUB_WORKSPACE" \
-              -maxdepth 2 \
-              -type f \
-              -name "*.zip" \
-              | head -n 1)
-
-            if [ -z "$ZIP_FILE" ]; then
-
-              echo ""
-              echo "ERROR: File ZIP ARS POS tidak ditemukan."
-              echo ""
-              echo "Isi repository:"
-              find "$GITHUB_WORKSPACE" -maxdepth 3 -type f | head -100
-
-              exit 1
-
-            fi
-
-            echo "ZIP ditemukan:"
-            echo "$ZIP_FILE"
-
-            mkdir -p "$GITHUB_WORKSPACE/build-source"
-
-            unzip -q "$ZIP_FILE" \
-              -d "$GITHUB_WORKSPACE/build-source"
-
-            echo ""
-            echo "ZIP berhasil diekstrak."
-            echo "Mencari settings.gradle..."
-
-            SETTINGS_FILE=$(find \
-              "$GITHUB_WORKSPACE/build-source" \
-              -type f \
-              \( -name "settings.gradle.kts" -o -name "settings.gradle" \) \
-              | head -n 1)
-
-            if [ -z "$SETTINGS_FILE" ]; then
-
-              echo ""
-              echo "ERROR: settings.gradle tidak ditemukan."
-              echo ""
-
-              find "$GITHUB_WORKSPACE/build-source" \
-                -maxdepth 5 \
-                -type f \
-                | head -200
-
-              exit 1
-
-            fi
-
-            PROJECT_DIR=$(dirname "$SETTINGS_FILE")
-
-          fi
-
-
-          # --------------------------------------------------------
-          # Validasi project
-          # --------------------------------------------------------
-
-          echo ""
-          echo "=========================================="
-          echo " PROJECT ARS POS"
-          echo "=========================================="
-
-          echo "PROJECT_DIR:"
-          echo "$PROJECT_DIR"
-
-          echo ""
-          echo "Isi project:"
-          ls -la "$PROJECT_DIR"
-
-          if [ ! -f "$PROJECT_DIR/settings.gradle.kts" ] &&
-             [ ! -f "$PROJECT_DIR/settings.gradle" ]; then
-
-            echo ""
-            echo "ERROR: settings.gradle tidak ditemukan."
-            exit 1
-
-          fi
-
-          if [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ] &&
-             [ ! -f "$PROJECT_DIR/app/build.gradle" ]; then
-
-            echo ""
-            echo "ERROR: app/build.gradle tidak ditemukan."
-            exit 1
-
-          fi
-
-
-          # --------------------------------------------------------
-          # Simpan lokasi project untuk step berikutnya
-          # --------------------------------------------------------
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-          echo ""
-          echo "Project ARS POS siap dibuild."
+          echo "Gradle project structure OK."
 
 
       # ============================================================
-      # 6. CHECK GRADLE PROJECT
+      # 7. CLEAN BUILD
       # ============================================================
-      - name: Check Gradle project
-        shell: bash
+      - name: Clean project
         run: |
-
-          echo "=========================================="
-          echo " CHECK GRADLE PROJECT"
-          echo "=========================================="
-
-          cd "$PROJECT_DIR"
-
-          echo "Lokasi:"
-          pwd
-
-          echo ""
-          echo "Gradle files:"
-
-          find . \
-            -maxdepth 3 \
-            -type f \
-            \( \
-              -name "settings.gradle*" \
-              -o \
-              -name "build.gradle*" \
-              -o \
-              -name "gradlew" \
-            \) \
-            -print
+          gradle clean --no-daemon --stacktrace
 
 
       # ============================================================
-      # 7. BUILD RELEASE APK
+      # 8. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
-        shell: bash
         run: |
-
-          echo "=========================================="
-          echo " BUILD ARS POS RELEASE APK"
-          echo "=========================================="
-
-          cd "$PROJECT_DIR"
-
-          echo "Project:"
-          pwd
-
-          echo ""
-          echo "Menjalankan Gradle..."
-
-          gradle clean :app:assembleRelease --stacktrace
+          gradle :app:assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            --warning-mode all
 
 
       # ============================================================
-      # 8. CHECK APK
+      # 9. CEK HASIL APK
       # ============================================================
-      - name: Check APK
-        shell: bash
+      - name: Check APK output
         run: |
+          echo "=== APK OUTPUT ==="
 
-          echo "=========================================="
-          echo " HASIL BUILD APK"
-          echo "=========================================="
-
-          APK_DIR="$PROJECT_DIR/app/build/outputs/apk/release"
-
-          if [ ! -d "$APK_DIR" ]; then
-
-            echo "ERROR: Folder APK tidak ditemukan."
-
-            find "$PROJECT_DIR/app/build" \
-              -maxdepth 6 \
-              -type f \
-              | head -200
-
-            exit 1
-
-          fi
-
-          echo ""
-          echo "File APK:"
-
-          find "$APK_DIR" \
+          find app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
             -name "*.apk" \
-            -ls
+            -print
+
+          echo ""
+          echo "=== FILE SIZE ==="
+
+          ls -lh app/build/outputs/apk/release/*.apk
 
 
       # ============================================================
-      # 9. VERIFY APK SIGNATURE
+      # 10. VERIFY APK
       # ============================================================
-      - name: Verify APK signature
+      - name: Verify APK
         shell: bash
         run: |
+          set -e
 
-          echo "=========================================="
-          echo " VERIFIKASI SIGNATURE APK"
-          echo "=========================================="
-
-          APK=$(find \
-            "$PROJECT_DIR/app/build/outputs/apk/release" \
+          APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
             -name "*.apk" \
             | head -n 1)
 
           if [ -z "$APK" ]; then
-
             echo "ERROR: APK tidak ditemukan."
             exit 1
-
           fi
 
-          echo ""
-          echo "APK:"
+          echo "APK ditemukan:"
           echo "$APK"
 
           echo ""
-          echo "Menjalankan apksigner..."
+          echo "=== APK SIGNATURE ==="
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -309,46 +168,79 @@ jobs:
 
 
       # ============================================================
-      # 10. COPY / RENAME APK
+      # 11. VERIFY APK ZIP ALIGNMENT
+      # ============================================================
+      - name: Verify APK alignment
+        shell: bash
+        run: |
+          set -e
+
+          APK=$(find app/build/outputs/apk/release \
+            -maxdepth 1 \
+            -type f \
+            -name "*.apk" \
+            | head -n 1)
+
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
+
+
+      # ============================================================
+      # 12. RENAME APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
         run: |
+          set -e
 
-          echo "=========================================="
-          echo " MENYIAPKAN APK FINAL"
-          echo "=========================================="
-
-          APK_DIR="$PROJECT_DIR/app/build/outputs/apk/release"
-
-          APK=$(find "$APK_DIR" \
+          APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
             -name "*.apk" \
-            ! -name "ARS-POS-1.0.0-signed.apk" \
             | head -n 1)
 
           if [ -z "$APK" ]; then
-
-            echo "ERROR: APK release tidak ditemukan."
+            echo "ERROR: APK tidak ditemukan."
             exit 1
-
           fi
 
-          cp "$APK" \
-            "$APK_DIR/ARS-POS-1.0.0-signed.apk"
+          FINAL_APK="app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk"
 
-          echo ""
-          echo "APK FINAL:"
-          ls -lh "$APK_DIR/ARS-POS-1.0.0-signed.apk"
+          cp "$APK" "$FINAL_APK"
+
+          echo "Final APK:"
+          ls -lh "$FINAL_APK"
 
 
       # ============================================================
-      # 11. UPLOAD APK KE GITHUB ACTIONS
+      # 13. SHA-256 CHECKSUM
       # ============================================================
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Generate APK checksum
+        shell: bash
+        run: |
+          set -e
+
+          cd app/build/outputs/apk/release
+
+          sha256sum ARS-POS-1.0.0-signed.apk \
+            > ARS-POS-1.0.0-signed.apk.sha256
+
+          echo "=== SHA-256 ==="
+          cat ARS-POS-1.0.0-signed.apk.sha256
+
+
+      # ============================================================
+      # 14. UPLOAD APK
+      # ============================================================
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v7
         with:
           name: ARS-POS-1.0.0-SIGNED
-          path: "**/app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk"
+          path: |
+            app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk
+            app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk.sha256
           if-no-files-found: error
+          retention-days: 30
