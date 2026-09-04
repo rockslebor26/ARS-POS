@@ -48,41 +48,16 @@ jobs:
         run: |
           set -e
 
-          echo "=========================================="
-          echo "ANDROID SDK"
-          echo "=========================================="
-
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-
-          echo ""
-          echo "sdkmanager version:"
-          sdkmanager --version
-
-          echo ""
-          echo "Accepting Android SDK licenses..."
-
           yes | sdkmanager --licenses >/dev/null || true
-
-          echo ""
-          echo "Installing required packages..."
 
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          echo ""
-          echo "Verifying Android SDK..."
-
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
           test -f "$ANDROID_HOME/platform-tools/adb"
-
-          echo ""
-          echo "Android SDK 35 OK."
-          echo "Build Tools 35.0.0 OK."
-          echo "Platform Tools OK."
 
 
       # ============================================================
@@ -95,7 +70,7 @@ jobs:
 
 
       # ============================================================
-      # 6. CHECK REPOSITORY
+      # 6. CHECK REPOSITORY FILES
       # ============================================================
       - name: Check repository files
         shell: bash
@@ -109,7 +84,7 @@ jobs:
           pwd
 
           echo ""
-          echo "Repository files:"
+          echo "FILES:"
           ls -lah
 
           echo ""
@@ -122,9 +97,12 @@ jobs:
 
 
       # ============================================================
-      # 7. FIND LATEST LOGIN FIX ZIP
+      # 7. FIND LATEST ARS POS ZIP
       #
-      # ZIP ini menjadi PRIORITAS UTAMA.
+      # Prioritas:
+      # 1. UI FIX V2
+      # 2. LOGIN FIX V1
+      # 3. COMPLETE FIXED
       # ============================================================
       - name: Find latest ARS POS ZIP
         shell: bash
@@ -133,59 +111,27 @@ jobs:
 
           ZIP_FILE=""
 
-          # --------------------------------------------------------
-          # PRIORITAS 1
-          # Login Fix terbaru
-          # --------------------------------------------------------
-          EXACT_ZIP="./ARS_POS_PHASE1_LOGIN_FIX_v1_COMPLETE.zip"
+          for candidate in \
+            "./ARS_POS_PHASE1_UI_FIX_V2_COMPLETE.zip" \
+            "./ARS_POS_PHASE1_LOGIN_FIX_v1_COMPLETE.zip" \
+            "./ARS_POS_PHASE1_COMPLETE_FIXED.zip"; do
 
-          if [ -f "$EXACT_ZIP" ]; then
-
-            ZIP_FILE="$EXACT_ZIP"
-
-            echo "LOGIN FIX ZIP ditemukan."
-
-          else
-
-            echo "Login Fix ZIP tidak ditemukan."
-            echo "Mencari Complete Fixed ZIP..."
-
-            # ------------------------------------------------------
-            # PRIORITAS 2
-            # Complete Fixed
-            # ------------------------------------------------------
-            EXACT_ZIP="./ARS_POS_PHASE1_COMPLETE_FIXED.zip"
-
-            if [ -f "$EXACT_ZIP" ]; then
-
-              ZIP_FILE="$EXACT_ZIP"
-
-            else
-
-              echo "Complete Fixed ZIP tidak ditemukan."
-              echo "Mencari Phase 1 Branding..."
-
-              # ----------------------------------------------------
-              # PRIORITAS 3
-              # Phase 1 Branding
-              # ----------------------------------------------------
-              ZIP_FILE=$(find . \
-                -type f \
-                -iname "*PHASE1*BRANDING*.zip" \
-                | head -n 1)
-
+            if [ -f "$candidate" ]; then
+              ZIP_FILE="$candidate"
+              break
             fi
 
+          done
+
+          if [ -z "$ZIP_FILE" ]; then
+            ZIP_FILE=$(find . \
+              -type f \
+              -iname "*PHASE1*BRANDING*.zip" \
+              | head -n 1)
           fi
 
-
-          # --------------------------------------------------------
-          # VALIDASI
-          # --------------------------------------------------------
           if [ -z "$ZIP_FILE" ]; then
-
-            echo ""
-            echo "ERROR: Tidak ada ZIP project ARS POS."
+            echo "ERROR: ZIP project ARS POS tidak ditemukan."
 
             echo ""
             echo "ZIP yang tersedia:"
@@ -196,37 +142,22 @@ jobs:
               -print
 
             exit 1
-
           fi
 
-
           echo ""
-          echo "=========================================="
-          echo "ZIP YANG AKAN DIGUNAKAN"
-          echo "=========================================="
-
+          echo "ZIP YANG AKAN DIGUNAKAN:"
           echo "$ZIP_FILE"
-
-          echo ""
-
-          ls -lh "$ZIP_FILE"
-
-          echo ""
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 8. EXTRACT PROJECT
+      # 8. EXTRACT ARS POS PROJECT
       # ============================================================
       - name: Extract ARS POS project
         shell: bash
         run: |
           set -e
-
-          echo "=========================================="
-          echo "EXTRACT PROJECT"
-          echo "=========================================="
 
           rm -rf extracted
 
@@ -238,15 +169,14 @@ jobs:
           unzip -o "$ZIP_FILE" -d extracted
 
           echo ""
-          echo "Extract selesai."
-
-          echo ""
-          echo "Project files:"
+          echo "=========================================="
+          echo "EXTRACTED PROJECT"
+          echo "=========================================="
 
           find extracted \
-            -maxdepth 4 \
+            -maxdepth 5 \
             -type f \
-            | head -n 150
+            | head -n 200
 
 
       # ============================================================
@@ -257,9 +187,7 @@ jobs:
         run: |
           set -e
 
-          echo "=========================================="
-          echo "LOCATE GRADLE PROJECT"
-          echo "=========================================="
+          echo "Mencari settings.gradle.kts..."
 
           SETTINGS_FILE=$(find extracted \
             -type f \
@@ -268,8 +196,7 @@ jobs:
 
           if [ -z "$SETTINGS_FILE" ]; then
 
-            echo "ERROR:"
-            echo "settings.gradle.kts tidak ditemukan."
+            echo "ERROR: settings.gradle.kts tidak ditemukan."
 
             echo ""
             echo "Isi extracted:"
@@ -280,26 +207,21 @@ jobs:
               | sort
 
             exit 1
-
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
           echo ""
-          echo "settings.gradle.kts:"
-          echo "$SETTINGS_FILE"
-
-          echo ""
-          echo "PROJECT_DIR:"
+          echo "GRADLE PROJECT:"
           echo "$PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 10. VALIDATE PROJECT
+      # 10. VALIDATE PROJECT DAN MAINACTIVITY
       # ============================================================
-      - name: Validate Gradle project
+      - name: Validate project and UI sources
         shell: bash
         run: |
           set -e
@@ -307,19 +229,8 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "VALIDATE PROJECT"
+          echo "VALIDATE ARS POS PROJECT"
           echo "=========================================="
-
-          echo ""
-          echo "Project directory:"
-          pwd
-
-          echo ""
-          echo "Project files:"
-          ls -lah
-
-          echo ""
-          echo "Checking required files..."
 
           test -f settings.gradle.kts
           test -f build.gradle.kts
@@ -330,49 +241,24 @@ jobs:
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
           echo ""
+          echo "MainActivity.kt:"
+          wc -l \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
+
+          echo ""
+          echo "UI FIX MARKERS:"
+
+          grep -n \
+            "KERANJANG\|JUMLAH BARANG\|TRANSAKSI TERBARU" \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt \
+            || true
+
+          echo ""
           echo "Gradle project structure OK."
-          echo "MainActivity.kt ditemukan."
 
 
       # ============================================================
-      # 11. CHECK MAINACTIVITY
-      # ============================================================
-      - name: Check MainActivity
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          MAIN_FILE="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
-          echo "=========================================="
-          echo "MAINACTIVITY CHECK"
-          echo "=========================================="
-
-          echo ""
-          echo "File:"
-          echo "$MAIN_FILE"
-
-          echo ""
-          echo "Jumlah baris:"
-          wc -l "$MAIN_FILE"
-
-          echo ""
-          echo "MainActivity:"
-          grep -n "class MainActivity" "$MAIN_FILE" || true
-
-          echo ""
-          echo "App function:"
-          grep -n "fun App" "$MAIN_FILE" || true
-
-          echo ""
-          echo "Login function:"
-          grep -n "fun Login" "$MAIN_FILE" || true
-
-
-      # ============================================================
-      # 12. CHECK ARS BRANDING
+      # 11. CHECK ARS BRANDING
       # ============================================================
       - name: Check ARS branding
         shell: bash
@@ -382,11 +268,11 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "ARS BRANDING CHECK"
+          echo "ARS BRANDING"
           echo "=========================================="
 
           echo ""
-          echo "LAUNCHER ICONS:"
+          echo "LAUNCHER ICON:"
 
           find app/src/main/res \
             -type f \
@@ -395,7 +281,8 @@ jobs:
               -o \
               -iname "*launcher*" \
             \) \
-            -print || true
+            -print \
+            || true
 
           echo ""
           echo "ARS BACKGROUND:"
@@ -403,48 +290,20 @@ jobs:
           find app/src/main/res \
             -type f \
             -iname "*ars_background*" \
-            -print || true
+            -print \
+            || true
 
           echo ""
           echo "ANDROID MANIFEST:"
 
           grep -n \
             "android:icon\|android:roundIcon" \
-            app/src/main/AndroidManifest.xml || true
+            app/src/main/AndroidManifest.xml \
+            || true
 
 
       # ============================================================
-      # 13. CHECK BUILD ENVIRONMENT
-      # ============================================================
-      - name: Check build environment
-        shell: bash
-        run: |
-          set -e
-
-          echo "=========================================="
-          echo "JAVA"
-          echo "=========================================="
-
-          java -version
-
-          echo ""
-          echo "=========================================="
-          echo "GRADLE"
-          echo "=========================================="
-
-          gradle --version
-
-          echo ""
-          echo "=========================================="
-          echo "ANDROID SDK"
-          echo "=========================================="
-
-          sdkmanager --list_installed \
-            | head -n 100
-
-
-      # ============================================================
-      # 14. CLEAN PROJECT
+      # 12. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -453,17 +312,13 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "CLEAN"
-          echo "=========================================="
-
           gradle clean \
             --no-daemon \
             --stacktrace
 
 
       # ============================================================
-      # 15. BUILD RELEASE APK
+      # 13. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -472,10 +327,6 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "BUILD RELEASE APK"
-          echo "=========================================="
-
           gradle :app:assembleRelease \
             --no-daemon \
             --stacktrace \
@@ -483,7 +334,7 @@ jobs:
 
 
       # ============================================================
-      # 16. CHECK APK OUTPUT
+      # 14. CHECK APK OUTPUT
       # ============================================================
       - name: Check APK output
         shell: bash
@@ -510,7 +361,7 @@ jobs:
 
 
       # ============================================================
-      # 17. VERIFY APK SIGNATURE
+      # 15. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -519,7 +370,8 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
+          APK=$(find \
+            app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
             -name "*.apk" \
@@ -546,7 +398,7 @@ jobs:
 
 
       # ============================================================
-      # 18. VERIFY APK ALIGNMENT
+      # 16. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -555,11 +407,17 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
+          APK=$(find \
+            app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
             -name "*.apk" \
             | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK tidak ditemukan."
+            exit 1
+          fi
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
             -c \
@@ -569,7 +427,7 @@ jobs:
 
 
       # ============================================================
-      # 19. PREPARE FINAL APK
+      # 17. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
@@ -578,7 +436,8 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
+          APK=$(find \
+            app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
             -name "*.apk" \
@@ -602,7 +461,7 @@ jobs:
 
 
       # ============================================================
-      # 20. GENERATE SHA-256
+      # 18. GENERATE SHA-256 CHECKSUM
       # ============================================================
       - name: Generate APK checksum
         shell: bash
@@ -624,14 +483,17 @@ jobs:
 
 
       # ============================================================
-      # 21. UPLOAD SIGNED APK
+      # 19. UPLOAD SIGNED APK
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
           name: ARS-POS-1.0.0-SIGNED
+
           path: |
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk.sha256
+
           if-no-files-found: error
+
           retention-days: 30
