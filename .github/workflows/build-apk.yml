@@ -41,7 +41,7 @@ jobs:
 
 
       # ============================================================
-      # 4. INSTALL ANDROID SDK PACKAGES
+      # 4. INSTALL ANDROID SDK
       # ============================================================
       - name: Install Android SDK packages
         shell: bash
@@ -70,39 +70,29 @@ jobs:
 
 
       # ============================================================
-      # 6. CHECK REPOSITORY FILES
+      # 6. CHECK REPOSITORY
       # ============================================================
       - name: Check repository files
         shell: bash
         run: |
           set -e
 
-          echo "=========================================="
-          echo "REPOSITORY ROOT"
-          echo "=========================================="
-
           pwd
 
-          echo ""
-          echo "FILES:"
+          echo "=========================================="
+          echo "REPOSITORY FILES"
+          echo "=========================================="
+
           ls -lah
 
           echo ""
           echo "ZIP FILES:"
 
-          find . \
-            -type f \
-            -iname "*.zip" \
-            -print
+          find . -type f -iname "*.zip" -print
 
 
       # ============================================================
       # 7. FIND LATEST ARS POS ZIP
-      #
-      # Prioritas:
-      # 1. UI FIX V2
-      # 2. LOGIN FIX V1
-      # 3. COMPLETE FIXED
       # ============================================================
       - name: Find latest ARS POS ZIP
         shell: bash
@@ -112,6 +102,7 @@ jobs:
           ZIP_FILE=""
 
           for candidate in \
+            "./ARS_POS_PHASE2_CART_V1_COMPLETE.zip" \
             "./ARS_POS_PHASE1_UI_FIX_V2_COMPLETE.zip" \
             "./ARS_POS_PHASE1_LOGIN_FIX_v1_COMPLETE.zip" \
             "./ARS_POS_PHASE1_COMPLETE_FIXED.zip"; do
@@ -152,7 +143,7 @@ jobs:
 
 
       # ============================================================
-      # 8. EXTRACT ARS POS PROJECT
+      # 8. EXTRACT PROJECT
       # ============================================================
       - name: Extract ARS POS project
         shell: bash
@@ -160,7 +151,6 @@ jobs:
           set -e
 
           rm -rf extracted
-
           mkdir -p extracted
 
           echo "Extracting:"
@@ -186,8 +176,6 @@ jobs:
         shell: bash
         run: |
           set -e
-
-          echo "Mencari settings.gradle.kts..."
 
           SETTINGS_FILE=$(find extracted \
             -type f \
@@ -219,7 +207,7 @@ jobs:
 
 
       # ============================================================
-      # 10. VALIDATE PROJECT DAN MAINACTIVITY
+      # 10. VALIDATE PROJECT + CART V1
       # ============================================================
       - name: Validate project and UI sources
         shell: bash
@@ -241,15 +229,16 @@ jobs:
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
           echo ""
-          echo "MainActivity.kt:"
+          echo "MainActivity.kt lines:"
+
           wc -l \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
           echo ""
-          echo "UI FIX MARKERS:"
+          echo "CART V1 MARKERS:"
 
           grep -n \
-            "KERANJANG\|JUMLAH BARANG\|TRANSAKSI TERBARU" \
+            "KERANJANG\|JUMLAH BARANG\|Icons.Default.Remove\|Icons.Default.Add\|Icons.Default.Delete\|TRANSAKSI TERBARU" \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt \
             || true
 
@@ -377,10 +366,7 @@ jobs:
             -name "*.apk" \
             | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
-            exit 1
-          fi
+          test -n "$APK"
 
           echo ""
           echo "APK:"
@@ -414,10 +400,7 @@ jobs:
             -name "*.apk" \
             | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
-            exit 1
-          fi
+          test -n "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
             -c \
@@ -443,25 +426,22 @@ jobs:
             -name "*.apk" \
             | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
-            exit 1
-          fi
+          test -n "$APK"
 
-          FINAL_APK="app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk"
-
-          cp "$APK" "$FINAL_APK"
+          cp "$APK" \
+            app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk
 
           echo ""
           echo "=========================================="
           echo "FINAL APK"
           echo "=========================================="
 
-          ls -lh "$FINAL_APK"
+          ls -lh \
+            app/build/outputs/apk/release/ARS-POS-1.0.0-signed.apk
 
 
       # ============================================================
-      # 18. GENERATE SHA-256 CHECKSUM
+      # 18. GENERATE SHA-256
       # ============================================================
       - name: Generate APK checksum
         shell: bash
