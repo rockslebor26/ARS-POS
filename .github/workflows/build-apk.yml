@@ -25,9 +25,6 @@ jobs:
 
       # ============================================================
       # 2. SETUP JAVA 17
-      #
-      # CACHE GRADLE DIHAPUS
-      # karena project Gradle masih berada di dalam ZIP.
       # ============================================================
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -37,19 +34,62 @@ jobs:
 
 
       # ============================================================
-      # 3. SETUP ANDROID SDK
+      # 3. SETUP ANDROID COMMAND LINE TOOLS
+      #
+      # Package SDK tidak dipasang di sini.
+      # Kita install secara manual pada step berikutnya.
       # ============================================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+          packages: ''
 
 
       # ============================================================
-      # 4. SETUP GRADLE 8.9
+      # 4. INSTALL ANDROID SDK PACKAGES
+      # ============================================================
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -e
+
+          echo "=========================================="
+          echo "ANDROID SDK"
+          echo "=========================================="
+
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+          echo ""
+          echo "sdkmanager:"
+          sdkmanager --version
+
+          echo ""
+          echo "Installing required packages..."
+
+          yes | sdkmanager --licenses >/dev/null || true
+
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+          echo ""
+          echo "=========================================="
+          echo "VERIFY SDK"
+          echo "=========================================="
+
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -d "$ANDROID_HOME/build-tools/35.0.0"
+          test -f "$ANDROID_HOME/platform-tools/adb"
+
+          echo "Android SDK 35 OK."
+          echo "Build Tools 35.0.0 OK."
+          echo "Platform Tools OK."
+
+
+      # ============================================================
+      # 5. SETUP GRADLE 8.9
       # ============================================================
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
@@ -58,11 +98,13 @@ jobs:
 
 
       # ============================================================
-      # 5. CHECK REPOSITORY
+      # 6. CHECK REPOSITORY
       # ============================================================
       - name: Check repository files
         shell: bash
         run: |
+          set -e
+
           echo "=========================================="
           echo "REPOSITORY ROOT"
           echo "=========================================="
@@ -75,11 +117,15 @@ jobs:
 
           echo ""
           echo "ZIP FILES:"
-          find . -maxdepth 2 -type f -iname "*.zip" -print
+          find . \
+            -maxdepth 2 \
+            -type f \
+            -iname "*.zip" \
+            -print
 
 
       # ============================================================
-      # 6. FIND PHASE 1 BRANDING ZIP
+      # 7. FIND PHASE 1 BRANDING ZIP
       # ============================================================
       - name: Find Phase 1 ZIP
         shell: bash
@@ -95,7 +141,10 @@ jobs:
             echo "ERROR: ZIP PHASE1 BRANDING tidak ditemukan."
             echo ""
             echo "ZIP yang tersedia:"
-            find . -type f -iname "*.zip" -print
+            find . \
+              -type f \
+              -iname "*.zip" \
+              -print
             exit 1
           fi
 
@@ -106,37 +155,47 @@ jobs:
 
 
       # ============================================================
-      # 7. EXTRACT PHASE 1 PROJECT
+      # 8. EXTRACT PHASE 1 PROJECT
       # ============================================================
       - name: Extract Phase 1 project
         shell: bash
         run: |
           set -e
 
-          echo "Extracting:"
+          echo "=========================================="
+          echo "EXTRACT PHASE 1"
+          echo "=========================================="
+
+          echo "ZIP:"
           echo "$ZIP_FILE"
 
+          rm -rf extracted
           mkdir -p extracted
 
           unzip -o "$ZIP_FILE" -d extracted
 
           echo ""
-          echo "=========================================="
-          echo "EXTRACTED FILES"
-          echo "=========================================="
+          echo "Extract selesai."
 
-          find extracted -maxdepth 4 -type f | head -n 150
+          echo ""
+          echo "Project files:"
+          find extracted \
+            -maxdepth 4 \
+            -type f \
+            | head -n 150
 
 
       # ============================================================
-      # 8. LOCATE GRADLE PROJECT
+      # 9. LOCATE GRADLE PROJECT
       # ============================================================
       - name: Locate Gradle project
         shell: bash
         run: |
           set -e
 
-          echo "Mencari settings.gradle.kts..."
+          echo "=========================================="
+          echo "LOCATE GRADLE PROJECT"
+          echo "=========================================="
 
           SETTINGS_FILE=$(find extracted \
             -type f \
@@ -145,23 +204,32 @@ jobs:
 
           if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: settings.gradle.kts tidak ditemukan."
+
             echo ""
             echo "Isi extracted:"
-            find extracted -maxdepth 6 -type f | sort
+            find extracted \
+              -maxdepth 6 \
+              -type f \
+              | sort
+
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
           echo ""
-          echo "Gradle project ditemukan:"
+          echo "settings.gradle.kts:"
+          echo "$SETTINGS_FILE"
+
+          echo ""
+          echo "PROJECT_DIR:"
           echo "$PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 9. VALIDATE PROJECT STRUCTURE
+      # 10. VALIDATE GRADLE PROJECT
       # ============================================================
       - name: Validate Gradle project
         shell: bash
@@ -171,7 +239,7 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "PROJECT DIRECTORY"
+          echo "VALIDATE PROJECT"
           echo "=========================================="
 
           pwd
@@ -181,7 +249,7 @@ jobs:
           ls -lah
 
           echo ""
-          echo "Validating..."
+          echo "Checking required files..."
 
           test -f settings.gradle.kts
           test -f build.gradle.kts
@@ -193,7 +261,7 @@ jobs:
 
 
       # ============================================================
-      # 10. CHECK ARS BRANDING
+      # 11. CHECK ARS BRANDING
       # ============================================================
       - name: Check ARS branding
         shell: bash
@@ -203,7 +271,7 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "ARS BRANDING FILES"
+          echo "ARS BRANDING CHECK"
           echo "=========================================="
 
           echo ""
@@ -225,14 +293,43 @@ jobs:
             -print || true
 
           echo ""
-          echo "Android Manifest:"
+          echo "Android Manifest icon:"
           grep -n \
             "android:icon\|android:roundIcon" \
             app/src/main/AndroidManifest.xml || true
 
 
       # ============================================================
-      # 11. CLEAN BUILD
+      # 12. CHECK JAVA / GRADLE / ANDROID
+      # ============================================================
+      - name: Check build environment
+        shell: bash
+        run: |
+          set -e
+
+          echo "=========================================="
+          echo "JAVA"
+          echo "=========================================="
+
+          java -version
+
+          echo ""
+          echo "=========================================="
+          echo "GRADLE"
+          echo "=========================================="
+
+          gradle --version
+
+          echo ""
+          echo "=========================================="
+          echo "ANDROID SDK"
+          echo "=========================================="
+
+          sdkmanager --list_installed | head -n 100
+
+
+      # ============================================================
+      # 13. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -247,7 +344,7 @@ jobs:
 
 
       # ============================================================
-      # 12. BUILD RELEASE APK
+      # 14. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -256,6 +353,10 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          echo "=========================================="
+          echo "BUILD RELEASE APK"
+          echo "=========================================="
+
           gradle :app:assembleRelease \
             --no-daemon \
             --stacktrace \
@@ -263,7 +364,7 @@ jobs:
 
 
       # ============================================================
-      # 13. CHECK APK OUTPUT
+      # 15. CHECK APK OUTPUT
       # ============================================================
       - name: Check APK output
         shell: bash
@@ -285,11 +386,12 @@ jobs:
           echo ""
           echo "APK SIZE:"
 
-          ls -lh app/build/outputs/apk/release/*.apk
+          ls -lh \
+            app/build/outputs/apk/release/*.apk
 
 
       # ============================================================
-      # 14. VERIFY APK SIGNATURE
+      # 16. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -324,7 +426,7 @@ jobs:
 
 
       # ============================================================
-      # 15. VERIFY APK ALIGNMENT
+      # 17. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -347,7 +449,7 @@ jobs:
 
 
       # ============================================================
-      # 16. PREPARE FINAL APK
+      # 18. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
@@ -380,7 +482,7 @@ jobs:
 
 
       # ============================================================
-      # 17. GENERATE SHA-256
+      # 19. GENERATE SHA-256
       # ============================================================
       - name: Generate APK checksum
         shell: bash
@@ -389,7 +491,8 @@ jobs:
 
           cd "$PROJECT_DIR/app/build/outputs/apk/release"
 
-          sha256sum ARS-POS-1.0.0-signed.apk \
+          sha256sum \
+            ARS-POS-1.0.0-signed.apk \
             > ARS-POS-1.0.0-signed.apk.sha256
 
           echo ""
@@ -401,7 +504,7 @@ jobs:
 
 
       # ============================================================
-      # 18. UPLOAD SIGNED APK
+      # 20. UPLOAD SIGNED APK
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
