@@ -11,45 +11,27 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2 Smart Recognition Engine
+    name: Build ARS POS Phase 4.3.2.5
     runs-on: ubuntu-latest
 
     steps:
-
-      # ============================================================
-      # 1. CHECKOUT
-      # ============================================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      # ============================================================
-      # 2. JAVA 17
-      # ============================================================
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-
-      # ============================================================
-      # 3. ANDROID SDK
-      # ============================================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-
-      # ============================================================
-      # 4. ANDROID SDK 35
-      # ============================================================
       - name: Install Android SDK packages
         shell: bash
         run: |
-          set -euo pipefail
-
+          set -e
           yes | sdkmanager --licenses >/dev/null || true
-
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -58,712 +40,309 @@ jobs:
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
 
-
-      # ============================================================
-      # 5. GRADLE 8.9
-      # ============================================================
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-
-      # ============================================================
-      # 6. BUILD ENVIRONMENT
-      # ============================================================
-      - name: Show build environment
+      - name: Check Phase 4.3.2.5 ZIP
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
-          echo "=========================================="
-          echo "ARS POS PHASE 4.3.2"
-          echo "SMART RECOGNITION ENGINE"
-          echo "=========================================="
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_5_PRODUCT_MASTER_STUDIO_FULL_FIXED.zip"
 
-          java -version
-          gradle --version
-
-          echo ""
-          echo "ANDROID_HOME=$ANDROID_HOME"
-
-          echo ""
-          echo "Repository:"
-          pwd
-          ls -lah
-
-
-      # ============================================================
-      # 7. CHECK ZIP PHASE 4.3.2
-      # ============================================================
-      - name: Check Phase 4.3.2 ZIP
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_SMART_RECOGNITION_ENGINE_FIXED.zip"
-
-          echo "Mencari:"
-          echo "$ZIP_FILE"
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo ""
-            echo "ERROR: ZIP Phase 4.3.2 tidak ditemukan."
-
-            echo ""
-            echo "ZIP yang tersedia:"
-            find . -maxdepth 2 -type f -iname "*.zip" -print
-
+          test -f "$ZIP_FILE" || {
+            echo "ZIP tidak ditemukan: $ZIP_FILE"
+            find . -maxdepth 2 -type f -iname '*.zip'
             exit 1
-          fi
+          }
 
-          echo ""
-          echo "ZIP ditemukan:"
-          ls -lh "$ZIP_FILE"
-
-          echo ""
-          echo "Memeriksa integritas ZIP:"
           unzip -t "$ZIP_FILE"
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
-
-      # ============================================================
-      # 8. EXTRACT PROJECT
-      # ============================================================
       - name: Extract project
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           rm -rf extracted
           mkdir -p extracted
 
           unzip -o "$ZIP_FILE" -d extracted
 
-          echo ""
-          echo "Project berhasil diekstrak."
-
-
-      # ============================================================
-      # 9. LOCATE GRADLE PROJECT
-      # ============================================================
       - name: Locate Gradle project
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
-          SETTINGS=$(find extracted \
-            -type f \
-            -name "settings.gradle.kts" \
-            | head -n 1)
+          SETTINGS=$(find extracted -type f -name settings.gradle.kts | head -n 1)
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle.kts tidak ditemukan."
-
-            find extracted \
-              -maxdepth 8 \
-              -type f \
-              | sort
-
+          test -n "$SETTINGS" || {
+            echo "settings.gradle.kts tidak ditemukan"
             exit 1
-          fi
+          }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "PROJECT_DIR=$PROJECT_DIR"
 
-          echo ""
-          echo "Gradle Project:"
-          echo "$PROJECT_DIR"
-
-
-      # ============================================================
-      # 10. VALIDATE SOURCE STRUCTURE
-      # ============================================================
-      - name: Validate Phase 4.3.2 sources
+      - name: Validate Phase 4.3.2.5 sources
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
-
-          echo "=========================================="
-          echo "VALIDATE PHASE 4.3.2 SOURCES"
-          echo "=========================================="
 
           REQUIRED=(
             "settings.gradle.kts"
             "build.gradle.kts"
             "gradle.properties"
             "app/build.gradle.kts"
-
             "app/src/main/AndroidManifest.xml"
-
+            "app/src/main/res/xml/file_paths.xml"
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/SmartRecognitionEngine.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-
+            "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt"
           )
 
           for f in "${REQUIRED[@]}"; do
-            if [ ! -f "$f" ]; then
+            test -f "$f" || {
               echo "MISSING: $f"
               exit 1
-            fi
-
-            echo "OK: $f"
+            }
           done
 
-          echo ""
-          echo "Source structure OK."
+          grep -q 'androidx.camera:camera-video:1.4.1' app/build.gradle.kts
+          grep -q 'captureAngle' app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt
+          grep -q 'MIGRATION_4_5' app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
+          grep -q 'MediaMetadataRetriever' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          grep -q 'KELENGKAPAN MASTER' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
 
+          echo "Source structure + Master Studio validation OK."
 
-      # ============================================================
-      # 11. VALIDATE VERSION
-      # ============================================================
-      - name: Validate ARS POS version
+      - name: Validate camera and fresh scan
         shell: bash
         run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          echo "Checking version..."
-
-          grep -q \
-            'versionCode = 110' \
-            app/build.gradle.kts
-
-          grep -q \
-            'versionName = "1.1.0"' \
-            app/build.gradle.kts
-
-          echo ""
-          echo "Version:"
-          echo "versionCode = 110"
-          echo "versionName = 1.1.0"
-
-          echo ""
-          echo "Version validation PASSED."
-
-
-      # ============================================================
-      # 12. VALIDATE ML KIT
-      # ============================================================
-      - name: Validate ML Kit dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          echo "=========================================="
-          echo "ML KIT VALIDATION"
-          echo "=========================================="
-
-          grep -q \
-            'com.google.mlkit:object-detection:17.0.2' \
-            app/build.gradle.kts
-
-          grep -q \
-            'com.google.mlkit:text-recognition:16.0.1' \
-            app/build.gradle.kts
-
-          grep -q \
-            'com.google.mlkit:barcode-scanning:17.3.0' \
-            app/build.gradle.kts
-
-          echo ""
-          echo "Object Detection      : OK"
-          echo "Text Recognition      : OK"
-          echo "Barcode Scanning      : OK"
-
-
-      # ============================================================
-      # 13. VALIDATE SMART RECOGNITION ENGINE
-      # ============================================================
-      - name: Validate Smart Recognition Engine
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/SmartRecognitionEngine.kt"
-
-          SCANNER="app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
-
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-
-          echo "=========================================="
-          echo "SMART RECOGNITION ENGINE"
-          echo "=========================================="
-
-          grep -q \
-            'MIN_FINAL_SCORE = 82' \
-            "$ENGINE"
-
-          grep -q \
-            'MIN_VISUAL_WITH_TEXT = 55' \
-            "$ENGINE"
-
-          grep -q \
-            'SmartRecognitionEngine' \
-            "$REPO"
-
-          grep -q \
-            'enableMultipleObjects' \
-            "$SCANNER"
-
-          echo ""
-          echo "Strict recognition threshold : OK"
-          echo "Visual + text recognition   : OK"
-          echo "Smart engine repository     : OK"
-          echo "Multi-object detection      : OK"
-
-
-      # ============================================================
-      # 14. VALIDATE OCR + BARCODE
-      # ============================================================
-      - name: Validate OCR and Barcode
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
-
-          echo "=========================================="
-          echo "OCR + BARCODE VALIDATION"
-          echo "=========================================="
-
-          grep -q \
-            'TextRecognition' \
-            "$INPUT"
-
-          grep -q \
-            'BarcodeScanning' \
-            "$INPUT"
-
-          grep -q \
-            'generateSku' \
-            "$INPUT"
-
-          echo ""
-          echo "OCR                 : OK"
-          echo "Barcode             : OK"
-          echo "Automatic SKU       : OK"
-
-
-      # ============================================================
-      # 15. VALIDATE CAMERA
-      # ============================================================
-      - name: Validate Camera Stability
-        shell: bash
-        run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
           MANIFEST="app/src/main/AndroidManifest.xml"
+          PATHS="app/src/main/res/xml/file_paths.xml"
 
-          echo "=========================================="
-          echo "CAMERA VALIDATION"
-          echo "=========================================="
+          grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
+          grep -q 'Manifest.permission.CAMERA' "$MAIN"
+          grep -q 'FileProvider' "$MANIFEST"
+          grep -q 'file_paths' "$MANIFEST"
+          grep -q 'camera_capture' "$PATHS"
+          grep -q 'fun openVisualScanner' "$MAIN"
+          grep -q 'visualMatches = emptyList()' "$MAIN"
+          grep -q 'smartScanObjects = emptyList()' "$MAIN"
+          grep -q 'scanPreview = null' "$MAIN"
 
-          grep -q \
-            'ActivityResultContracts.TakePicture()' \
-            "$MAIN"
+          ! grep -q 'TakePicturePreview' "$MAIN"
 
-          grep -q \
-            'Manifest.permission.CAMERA' \
-            "$MAIN"
+          echo "Camera + fresh scan validation OK."
 
-          grep -q \
-            'FileProvider' \
-            "$MANIFEST"
-
-          if grep -q \
-            'TakePicturePreview' \
-            "$MAIN"; then
-
-            echo "ERROR: TakePicturePreview masih digunakan."
-
-            exit 1
-          fi
-
-          echo ""
-          echo "Camera TakePicture : OK"
-          echo "FileProvider       : OK"
-          echo "Preview crash fix  : OK"
-
-
-      # ============================================================
-      # 16. VALIDATE FRESH SCAN
-      # ============================================================
-      - name: Validate Fresh Scan Session
+      - name: Validate smart recognition and OCR
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
-          echo "=========================================="
-          echo "FRESH SCAN SESSION"
-          echo "=========================================="
-
-          grep -q \
-            'fun openVisualScanner' \
-            "$MAIN"
-
-          grep -q \
-            'visualMatches = emptyList()' \
-            "$MAIN"
-
-          grep -q \
-            'scanPreview = null' \
-            "$MAIN"
-
-          echo ""
-          echo "Fresh scan reset : OK"
-
-
-      # ============================================================
-      # 17. VALIDATE EXISTING POS
-      # ============================================================
-      - name: Validate Existing POS Features
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
+          SCANNER="app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
+          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          GRADLE="app/build.gradle.kts"
 
+          grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE"
+          grep -q 'com.google.mlkit:text-recognition:16.0.1' "$GRADLE"
+          grep -q 'com.google.mlkit:barcode-scanning:17.3.0' "$GRADLE"
+
+          grep -q 'enableMultipleObjects' "$SCANNER"
+          grep -q 'SINGLE_IMAGE_MODE' "$SCANNER"
+          grep -q 'MIN_SCORE = 82' "$SCANNER"
+          grep -q 'MIN_MARGIN = 8' "$SCANNER"
+          grep -q 'take(MAX_OBJECTS)' "$SCANNER"
+
+          grep -q 'SmartProductInput.analyze' "$MAIN"
+          grep -q 'SmartProductInput.generateSku' "$MAIN"
+          grep -q 'TextRecognition' "$INPUT"
+          grep -q 'BarcodeScanning' "$INPUT"
+          grep -q 'smartVisualScan' "$REPO"
+
+          echo "Smart recognition + OCR/barcode validation OK."
+
+      - name: Validate product form improvements
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          grep -q 'heightIn(max = 560.dp)' "$MAIN"
+          grep -q 'HASIL BACA FOTO' "$MAIN"
+          grep -q 'Merek' "$MAIN"
+          grep -q 'Varian / Model' "$MAIN"
+          grep -q 'BACA FOTO' "$MAIN"
+          grep -q 'SIMPAN' "$MAIN"
+
+          echo "Product form UI validation OK."
+
+      - name: Validate existing POS features
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
 
-          echo "=========================================="
-          echo "EXISTING POS VALIDATION"
-          echo "=========================================="
-
           grep -q 'CASH' "$MAIN"
-
           grep -q 'QRIS' "$MAIN"
-
           grep -q 'TRANSFER' "$MAIN"
-
           grep -q 'DEBIT' "$MAIN"
-
           grep -q 'processingPayment' "$MAIN"
-
           grep -q 'formatRupiah' "$MAIN"
+          grep -q 'Locale("id", "ID")' "$MONEY"
+          grep -q 'db.withTransaction' "$REPO"
+          grep -q 'dao.changeStock' "$REPO"
 
-          grep -q \
-            'Locale("id", "ID")' \
-            "$MONEY"
+          echo "Existing POS validation OK."
 
-          grep -q \
-            'db.withTransaction' \
-            "$REPO"
-
-          grep -q \
-            'dao.changeStock' \
-            "$REPO"
-
-          echo ""
-          echo "Payment methods : OK"
-          echo "Rupiah format   : OK"
-          echo "Stock update    : OK"
-          echo "Transaction     : OK"
-
-
-      # ============================================================
-      # 18. VALIDATE BRANDING
-      # ============================================================
-      - name: Validate ARS Branding
+      - name: Validate version
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "ARS BRANDING"
-          echo "=========================================="
+          grep -q 'versionCode = 111' app/build.gradle.kts
+          grep -q 'versionName = "1.1.1"' app/build.gradle.kts
 
-          test -f \
-            app/src/main/res/drawable/ars_background.png
+          echo "Version 1.1.1 OK."
 
-          test -f \
-            app/src/main/res/drawable/ars_logo_master.png
-
-          test -f \
-            app/src/main/res/mipmap-mdpi/ic_launcher.png
-
-          test -f \
-            app/src/main/res/mipmap-hdpi/ic_launcher.png
-
-          test -f \
-            app/src/main/res/mipmap-xhdpi/ic_launcher.png
-
-          test -f \
-            app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-
-          test -f \
-            app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-          grep -q \
-            'android:icon' \
-            app/src/main/AndroidManifest.xml
-
-          grep -q \
-            'android:roundIcon' \
-            app/src/main/AndroidManifest.xml
-
-          echo ""
-          echo "ARS branding validation OK."
-
-
-      # ============================================================
-      # 19. CLEAN
-      # ============================================================
-      - name: Clean project
+      - name: Validate branding
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
 
-          gradle clean \
-            --no-daemon \
-            --stacktrace
+          test -f app/src/main/res/drawable/ars_background.png
+          test -f app/src/main/res/drawable/ars_logo_master.png
 
+          test -f app/src/main/res/mipmap-mdpi/ic_launcher.png
+          test -f app/src/main/res/mipmap-hdpi/ic_launcher.png
+          test -f app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          test -f app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          test -f app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      # ============================================================
-      # 20. BUILD RELEASE
-      # ============================================================
-      - name: Build Release APK
+          grep -q 'android:icon' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon' app/src/main/AndroidManifest.xml
+
+          echo "Branding validation OK."
+
+      - name: Build release APK
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
+
+          gradle clean --no-daemon --stacktrace
 
           gradle :app:assembleRelease \
             --no-daemon \
             --stacktrace \
             --warning-mode all
 
-
-      # ============================================================
-      # 21. FIND APK
-      # ============================================================
-      - name: Locate APK
+      - name: Verify and prepare APK
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           cd "$PROJECT_DIR"
 
-          APK=$(find \
-            app/build/outputs/apk/release \
+          APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
-            -name "*.apk" \
-            | head -n 1)
+            -name '*.apk' | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
-
-            find \
-              app/build/outputs \
-              -type f \
-              | sort
-
+          test -n "$APK" || {
+            echo "APK tidak ditemukan"
             exit 1
-          fi
-
-          echo ""
-          echo "APK ditemukan:"
-          ls -lh "$APK"
+          }
 
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
-
-
-      # ============================================================
-      # 22. VERIFY SIGNATURE
-      # ============================================================
-      - name: Verify APK Signature
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
             --verbose \
-            "$APK_PATH"
-
-          echo ""
-          echo "APK signature verification PASSED."
-
-
-      # ============================================================
-      # 23. VERIFY ALIGNMENT
-      # ============================================================
-      - name: Verify APK Alignment
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
+            "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
             -c \
             -P 16 \
             -v 4 \
-            "$APK_PATH"
-
-          echo ""
-          echo "APK alignment verification PASSED."
-
-
-      # ============================================================
-      # 24. VERIFY PACKAGE + VERSION
-      # ============================================================
-      - name: Verify Package and Version
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
+            "$APK"
 
           BADGING=$(
             "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging \
-            "$APK_PATH"
+            "$APK"
           )
 
-          echo "$BADGING" \
-            | grep -E \
-            "package: name=|versionCode=|versionName="
+          echo "$BADGING" | grep -E \
+            'package: name=|versionCode=|versionName='
 
-          echo "$BADGING" \
-            | grep -q \
+          echo "$BADGING" | grep -q \
             "name='com.arspos.anglerriausyndicate'"
 
-          echo "$BADGING" \
-            | grep -q \
-            "versionCode='110'"
+          echo "$BADGING" | grep -q \
+            "versionCode='111'"
 
-          echo "$BADGING" \
-            | grep -q \
-            "versionName='1.1.0'"
+          echo "$BADGING" | grep -q \
+            "versionName='1.1.1'"
 
-          echo ""
-          echo "Package + version verification PASSED."
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED.apk"
 
+          cp "$APK" "$FINAL"
 
-      # ============================================================
-      # 25. PREPARE FINAL APK
-      # ============================================================
-      - name: Prepare Final APK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.0-PHASE4.3.2-SMART-RECOGNITION-ENGINE-SIGNED.apk"
-
-          cp \
-            "$APK_PATH" \
-            "$FINAL"
-
-          test -s "$FINAL"
-
-          sha256sum \
-            "$FINAL" \
-            > "$FINAL.sha256"
+          sha256sum "$FINAL" > "$FINAL.sha256"
 
           echo "FINAL_APK=$FINAL" >> "$GITHUB_ENV"
 
-          echo ""
-          echo "=========================================="
-          echo "FINAL APK"
-          echo "=========================================="
-
-          ls -lh \
-            "$FINAL" \
-            "$FINAL.sha256"
-
-          echo ""
-          echo "SHA-256:"
+          ls -lh "$FINAL" "$FINAL.sha256"
 
           cat "$FINAL.sha256"
 
-
-      # ============================================================
-      # 26. FINAL RELEASE CHECK
-      # ============================================================
-      - name: Final Release Check
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR/app/build/outputs/apk/release"
-
-          APK="ARS-POS-1.1.0-PHASE4.3.2-SMART-RECOGNITION-ENGINE-SIGNED.apk"
-
-          SHA="$APK.sha256"
-
-          test -s "$APK"
-          test -s "$SHA"
-
-          echo ""
-          echo "=========================================="
-          echo "ARS POS PHASE 4.3.2 READY"
-          echo "=========================================="
-
-          echo ""
-          echo "APK:"
-          ls -lh "$APK"
-
-          echo ""
-          echo "SHA-256:"
-          cat "$SHA"
-
-
-      # ============================================================
-      # 27. UPLOAD ARTIFACT
-      # ============================================================
-      - name: Upload Signed APK
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
-
         with:
-          name: ARS-POS-1.1.0-PHASE4.3.2-SMART-RECOGNITION-ENGINE-SIGNED
-
+          name: ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.0-PHASE4.3.2-SMART-RECOGNITION-ENGINE-SIGNED.apk
-
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.0-PHASE4.3.2-SMART-RECOGNITION-ENGINE-SIGNED.apk.sha256
-
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED.apk.sha256
           if-no-files-found: error
-
           retention-days: 30
