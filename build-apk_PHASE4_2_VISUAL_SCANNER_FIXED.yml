@@ -1,0 +1,356 @@
+name: ARS POS Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ARS POS Phase 4.2 Visual Product Scanner
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -e
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -d "$ANDROID_HOME/build-tools/35.0.0"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
+
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+
+      - name: Check repository files
+        shell: bash
+        run: |
+          set -e
+          echo "=========================================="
+          echo "ARS POS PHASE 4.2"
+          echo "=========================================="
+          pwd
+          ls -lah
+          echo "ZIP FILES:"
+          find . -type f -iname "*.zip" -print
+
+      - name: Require Phase 4.2 project ZIP
+        shell: bash
+        run: |
+          set -e
+          ZIP_FILE="./ARS_POS_PHASE4_2_VISUAL_SCANNER_COMPLETE.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: $ZIP_FILE tidak ditemukan di ROOT repository."
+            echo "Upload ZIP Phase 4.2 terbaru ke root repository."
+            find . -type f -iname "*.zip" -print
+            exit 1
+          fi
+
+          echo "ZIP ditemukan:"
+          ls -lh "$ZIP_FILE"
+          unzip -t "$ZIP_FILE"
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+
+      - name: Extract ARS POS project
+        shell: bash
+        run: |
+          set -e
+          rm -rf extracted
+          mkdir -p extracted
+          unzip -o "$ZIP_FILE" -d extracted
+
+      - name: Locate Gradle project
+        shell: bash
+        run: |
+          set -e
+          SETTINGS_FILE=$(find extracted -type f -name "settings.gradle.kts" | head -n 1)
+
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "ERROR: settings.gradle.kts tidak ditemukan."
+            find extracted -maxdepth 8 -type f | sort
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Gradle project: $PROJECT_DIR"
+
+      - name: Validate Phase 4.2 sources
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f gradle.properties
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/Money.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt
+
+          echo "Phase 4.2 source structure OK."
+
+      - name: Validate Visual Scanner
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          DAO="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
+          MATCHER="app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
+          MANIFEST="app/src/main/AndroidManifest.xml"
+
+          echo "=========================================="
+          echo "VISUAL SCANNER"
+          echo "=========================================="
+
+          grep -n "SCAN FOTO PRODUK" "$MAIN"
+          grep -n "SCAN ULANG" "$MAIN"
+          grep -n "TakePicturePreview" "$MAIN"
+          grep -n "RequestPermission" "$MAIN"
+          grep -n "Manifest.permission.CAMERA" "$MAIN"
+          grep -n "findVisualMatches" "$VM"
+          grep -n "visualProductMatches" "$REPO"
+          grep -n "allProductPhotos" "$DAO"
+          grep -n "ProductVisualMatcher.score" "$REPO"
+          grep -n "Kecocokan visual" "$MAIN"
+          grep -n "TAMBAH" "$MAIN"
+          grep -n "android.permission.CAMERA" "$MANIFEST"
+
+          echo "Matcher implementation:"
+          grep -n "fingerprint\|structuralSimilarity\|histogramSimilarity\|hashSimilarity" "$MATCHER"
+
+          echo "Visual match model:"
+          grep -n "data class VisualProductMatch" app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt
+          grep -n "val product: ProductEntity" app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt
+          grep -n "val photo: ProductPhotoEntity" app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt
+          grep -n "val score: Int" app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt
+
+          echo "Visual scanner validation OK."
+
+      - name: Validate Offline and Photo Database
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          DAO="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
+          DB="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
+
+          grep -n "product_photos" "$DAO"
+          grep -n "version=4" "$DB"
+          grep -n "MIGRATION_3_4" "$DB"
+          grep -n "filesDir" "$MAIN"
+          grep -n "Bitmap.CompressFormat.JPEG" "$MAIN"
+
+          echo "Offline/photo database validation OK."
+
+      - name: Validate Existing POS Features
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+
+          echo "Payment:"
+          grep -n "processingPayment" "$MAIN"
+          grep -n "UANG PAS" "$MAIN"
+          grep -n 'Rp 50.000' "$MAIN"
+          grep -n 'Rp 100.000' "$MAIN"
+          grep -n 'Rp 200.000' "$MAIN"
+          grep -n 'Rp 500.000' "$MAIN"
+          grep -n "QRIS" "$MAIN"
+          grep -n "TRANSFER" "$MAIN"
+          grep -n "DEBIT" "$MAIN"
+          grep -n "UANG KURANG" "$MAIN"
+          grep -n "KEMBALIAN" "$MAIN"
+
+          echo "Transaction safety:"
+          grep -n "db.withTransaction" "$REPO"
+          grep -n "yyyyMMdd-HHmmssSSS" "$REPO"
+          grep -n "dao.changeStock" "$REPO"
+
+          echo "Rupiah:"
+          grep -n "formatRupiah" "$MONEY"
+          grep -n "formatRupiah" "$MAIN"
+
+          echo "Existing POS feature preservation OK."
+
+      - name: Check ARS POS version
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          grep -n "versionCode\|versionName" app/build.gradle.kts
+          grep -q "versionCode = 105" app/build.gradle.kts
+          grep -q 'versionName = "1.0.5"' app/build.gradle.kts
+
+          echo "Version 1.0.5 validation OK."
+
+      - name: Validate ARS branding
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          test -f app/src/main/res/drawable/ars_background.png
+          test -f app/src/main/res/drawable/ars_logo_master.png
+          grep -n "android:icon\|android:roundIcon" app/src/main/AndroidManifest.xml
+
+          echo "ARS branding validation OK."
+
+      - name: Show build environment
+        shell: bash
+        run: |
+          set -e
+          java -version
+          echo ""
+          gradle --version
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+      - name: Clean project
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+          gradle clean --no-daemon --stacktrace
+
+      - name: Build Release APK
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+          gradle :app:assembleRelease --no-daemon --stacktrace --warning-mode all
+
+      - name: Locate APK
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          APK_DIR="app/build/outputs/apk/release"
+          APK=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK tidak ditemukan."
+            find app/build/outputs -type f | sort
+            exit 1
+          fi
+
+          ls -lh "$APK"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK_PATH"
+          echo "Signature verification PASSED."
+
+      - name: Verify APK alignment
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK_PATH"
+          echo "Alignment verification PASSED."
+
+      - name: Verify APK package and version
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" | grep -E "package: name=|versionCode=|versionName="
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" | grep -q "versionCode='105'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" | grep -q "versionName='1.0.5'"
+
+          echo "Package/version verification PASSED."
+
+      - name: Prepare final APK
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR"
+
+          APK_DIR="app/build/outputs/apk/release"
+          FINAL_APK="$APK_DIR/ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk"
+
+          cp "$APK_PATH" "$FINAL_APK"
+          test -f "$FINAL_APK"
+
+          sha256sum "$FINAL_APK" > "$FINAL_APK.sha256"
+
+          ls -lh "$FINAL_APK" "$FINAL_APK.sha256"
+          cat "$FINAL_APK.sha256"
+
+      - name: Final release check
+        shell: bash
+        run: |
+          set -e
+          cd "$PROJECT_DIR/app/build/outputs/apk/release"
+
+          test -f ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk
+          test -f ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk.sha256
+
+          echo "=========================================="
+          echo "ARS POS PHASE 4.2 READY"
+          echo "=========================================="
+
+          ls -lh ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk
+          cat ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk.sha256
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.5-PHASE4.2-VISUAL-SCANNER-SIGNED.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
