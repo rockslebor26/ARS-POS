@@ -73,7 +73,7 @@ jobs:
 
 
       # ============================================================
-      # 6. CHECK REPOSITORY
+      # 6. CHECK REPOSITORY FILES
       # ============================================================
       - name: Check repository files
         shell: bash
@@ -86,15 +86,13 @@ jobs:
 
           pwd
 
+          echo ""
+          echo "Repository contents:"
           ls -lah
 
           echo ""
           echo "ZIP FILES:"
-
-          find . \
-            -type f \
-            -iname "*.zip" \
-            -print
+          find . -type f -iname "*.zip" -print
 
 
       # ============================================================
@@ -113,22 +111,17 @@ jobs:
             echo "$ZIP_FILE tidak ditemukan di ROOT repository."
 
             echo ""
-            echo "Upload ZIP Phase 4.2 terbaru ke ROOT repository."
+            echo "Upload ZIP Phase 4.2 terbaru ke root repository."
 
             echo ""
             echo "ZIP yang tersedia:"
-
-            find . \
-              -type f \
-              -iname "*.zip" \
-              -print
+            find . -type f -iname "*.zip" -print
 
             exit 1
           fi
 
           echo ""
           echo "ZIP ditemukan:"
-
           ls -lh "$ZIP_FILE"
 
           echo ""
@@ -193,7 +186,6 @@ jobs:
 
           echo ""
           echo "Gradle project ditemukan:"
-
           echo "$PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
@@ -209,11 +201,16 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          echo "=========================================="
+          echo "VALIDATE PHASE 4.2 SOURCES"
+          echo "=========================================="
+
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f gradle.properties
 
           test -f app/build.gradle.kts
+
           test -f app/src/main/AndroidManifest.xml
 
           test -f \
@@ -227,6 +224,9 @@ jobs:
 
           test -f \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt
 
           test -f \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
@@ -259,6 +259,7 @@ jobs:
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           DAO="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
           MATCHER="app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
+          MODEL="app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
           MANIFEST="app/src/main/AndroidManifest.xml"
 
           echo "=========================================="
@@ -266,75 +267,52 @@ jobs:
           echo "=========================================="
 
           echo ""
-          echo "Scan photo button:"
-
+          echo "Camera UI:"
           grep -n "SCAN FOTO PRODUK" "$MAIN"
-
-          echo ""
-          echo "Rescan button:"
-
           grep -n "SCAN ULANG" "$MAIN"
 
           echo ""
-          echo "Camera:"
-
+          echo "Camera API:"
           grep -n "TakePicturePreview" "$MAIN"
-
-          echo ""
-          echo "Camera permission:"
-
           grep -n "RequestPermission" "$MAIN"
-
           grep -n "Manifest.permission.CAMERA" "$MAIN"
 
           echo ""
-          echo "ViewModel visual matching:"
-
+          echo "Visual matching:"
           grep -n "findVisualMatches" "$VM"
-
-          echo ""
-          echo "Repository visual matching:"
-
           grep -n "visualProductMatches" "$REPO"
-
-          echo ""
-          echo "DAO photo database:"
-
           grep -n "allProductPhotos" "$DAO"
-
-          echo ""
-          echo "Visual matcher score:"
-
           grep -n "ProductVisualMatcher.score" "$REPO"
 
           echo ""
-          echo "Visual result UI:"
-
+          echo "Visual match result UI:"
           grep -n "Kecocokan visual" "$MAIN"
-
-          echo ""
-          echo "Add product:"
-
           grep -n "TAMBAH" "$MAIN"
 
           echo ""
-          echo "Android camera permission:"
-
+          echo "Camera permission:"
           grep -n "android.permission.CAMERA" "$MANIFEST"
 
           echo ""
           echo "Matcher implementation:"
+          grep -n "fingerprint" "$MATCHER"
+          grep -n "structuralSimilarity" "$MATCHER"
+          grep -n "histogramSimilarity" "$MATCHER"
+          grep -n "hashSimilarity" "$MATCHER"
 
-          grep -n \
-            "fingerprint\|structuralSimilarity\|histogramSimilarity\|hashSimilarity" \
-            "$MATCHER"
+          echo ""
+          echo "VisualProductMatch model:"
+          grep -n "data class VisualProductMatch" "$MODEL"
+          grep -n "val product: ProductEntity" "$MODEL"
+          grep -n "val photo: ProductPhotoEntity" "$MODEL"
+          grep -n "val score: Int" "$MODEL"
 
           echo ""
           echo "Visual scanner validation OK."
 
 
       # ============================================================
-      # 12. VALIDATE OFFLINE PHOTO DATABASE
+      # 12. VALIDATE OFFLINE AND PHOTO DATABASE
       # ============================================================
       - name: Validate Offline and Photo Database
         shell: bash
@@ -384,44 +362,34 @@ jobs:
           echo "=========================================="
 
           echo ""
-          echo "Payment protection:"
+          echo "Payment:"
 
           grep -n "processingPayment" "$MAIN"
-
           grep -n "UANG PAS" "$MAIN"
 
           grep -n 'Rp 50.000' "$MAIN"
-
           grep -n 'Rp 100.000' "$MAIN"
-
           grep -n 'Rp 200.000' "$MAIN"
-
           grep -n 'Rp 500.000' "$MAIN"
 
           grep -n "QRIS" "$MAIN"
-
           grep -n "TRANSFER" "$MAIN"
-
           grep -n "DEBIT" "$MAIN"
 
           grep -n "UANG KURANG" "$MAIN"
-
           grep -n "KEMBALIAN" "$MAIN"
 
           echo ""
           echo "Transaction safety:"
 
           grep -n "db.withTransaction" "$REPO"
-
           grep -n "yyyyMMdd-HHmmssSSS" "$REPO"
-
           grep -n "dao.changeStock" "$REPO"
 
           echo ""
-          echo "Rupiah:"
+          echo "Rupiah formatter:"
 
           grep -n "formatRupiah" "$MONEY"
-
           grep -n "formatRupiah" "$MAIN"
 
           echo ""
@@ -468,6 +436,10 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          echo "=========================================="
+          echo "ARS BRANDING"
+          echo "=========================================="
+
           test -f \
             app/src/main/res/drawable/ars_background.png
 
@@ -480,6 +452,14 @@ jobs:
           grep -n \
             "android:icon\|android:roundIcon" \
             app/src/main/AndroidManifest.xml
+
+          echo ""
+          echo "Launcher files:"
+
+          find app/src/main/res \
+            -type f \
+            \( -iname "ic_launcher*" -o -iname "*launcher*" \) \
+            -print
 
           echo ""
           echo "ARS branding validation OK."
@@ -592,6 +572,10 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          echo "=========================================="
+          echo "APK SIGNATURE"
+          echo "=========================================="
+
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
             --verbose \
@@ -610,6 +594,10 @@ jobs:
           set -e
 
           cd "$PROJECT_DIR"
+
+          echo "=========================================="
+          echo "APK ALIGNMENT"
+          echo "=========================================="
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
             -c \
@@ -644,12 +632,14 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging \
             "$APK_PATH" \
-            | grep -q "versionCode='105'"
+            | grep -q \
+            "versionCode='105'"
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging \
             "$APK_PATH" \
-            | grep -q "versionName='1.0.5'"
+            | grep -q \
+            "versionName='1.0.5'"
 
           echo ""
           echo "Package/version verification PASSED."
@@ -686,6 +676,8 @@ jobs:
             "$FINAL_APK"
 
           echo ""
+          echo "SHA-256:"
+
           cat \
             "$FINAL_APK.sha256"
 
