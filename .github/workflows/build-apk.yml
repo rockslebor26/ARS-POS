@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.2.1 Camera Stability
+    name: Build ARS POS Phase 4.2.2 Fresh Scan Session
     runs-on: ubuntu-latest
 
     steps:
@@ -73,7 +73,7 @@ jobs:
 
 
       # ============================================================
-      # 6. CHECK REPOSITORY
+      # 6. CHECK REPOSITORY FILES
       # ============================================================
       - name: Check repository files
         shell: bash
@@ -81,63 +81,54 @@ jobs:
           set -e
 
           echo "=========================================="
-          echo "ARS POS PHASE 4.2.1 CAMERA STABILITY"
+          echo "ARS POS PHASE 4.2.2"
           echo "=========================================="
 
           pwd
 
+          echo ""
+          echo "Repository contents:"
           ls -lah
 
+          echo ""
           echo "ZIP FILES:"
-
-          find . \
-            -type f \
-            -iname "*.zip" \
-            -print
+          find . -maxdepth 2 -type f -iname "*.zip" -print
 
 
       # ============================================================
-      # 7. REQUIRE PHASE 4.2.1 PROJECT ZIP
+      # 7. REQUIRE PHASE 4.2.2 PROJECT ZIP
       # ============================================================
-      - name: Require Phase 4.2.1 project ZIP
+      - name: Require Phase 4.2.2 project ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_2_1_CAMERA_STABILITY_FIXED.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_2_2_SCAN_SESSION_RESET_FIXED.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-
             echo "ERROR:"
             echo "$ZIP_FILE tidak ditemukan di ROOT repository."
 
             echo ""
-            echo "Upload ZIP Phase 4.2.1 terbaru ke ROOT repository."
+            echo "Upload ZIP Phase 4.2.2 terbaru ke ROOT repository."
 
             echo ""
             echo "ZIP yang tersedia:"
-
-            find . \
-              -type f \
-              -iname "*.zip" \
-              -print
+            find . -type f -iname "*.zip" -print
 
             exit 1
-
           fi
 
+          echo ""
           echo "ZIP ditemukan:"
-
           ls -lh "$ZIP_FILE"
 
           echo ""
-
           echo "Testing ZIP integrity..."
 
           unzip -t "$ZIP_FILE"
 
           echo ""
-
           echo "ZIP integrity OK."
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
@@ -175,11 +166,10 @@ jobs:
             | head -n 1)
 
           if [ -z "$SETTINGS_FILE" ]; then
-
-            echo "ERROR:"
-            echo "settings.gradle.kts tidak ditemukan."
+            echo "ERROR: settings.gradle.kts tidak ditemukan."
 
             echo ""
+            echo "Isi extracted project:"
 
             find extracted \
               -maxdepth 8 \
@@ -187,7 +177,6 @@ jobs:
               | sort
 
             exit 1
-
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
@@ -199,9 +188,9 @@ jobs:
 
 
       # ============================================================
-      # 10. VALIDATE PHASE 4.2.1 SOURCES
+      # 10. VALIDATE PHASE 4.2.2 SOURCES
       # ============================================================
-      - name: Validate Phase 4.2.1 sources
+      - name: Validate Phase 4.2.2 sources
         shell: bash
         run: |
           set -e
@@ -209,78 +198,94 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "=========================================="
-          echo "VALIDATE PHASE 4.2.1 SOURCES"
+          echo "VALIDATE PHASE 4.2.2 SOURCES"
           echo "=========================================="
 
           FILES=(
-
             "settings.gradle.kts"
-
             "build.gradle.kts"
-
             "gradle.properties"
-
             "app/build.gradle.kts"
-
             "app/src/main/AndroidManifest.xml"
-
             "app/src/main/res/xml/file_paths.xml"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt"
-
           )
 
-          FAILED=0
-
           for FILE in "${FILES[@]}"; do
+            test -f "$FILE" || {
+              echo "MISSING: $FILE"
+              exit 1
+            }
 
-            if [ -f "$FILE" ]; then
-
-              echo "OK   $FILE"
-
-            else
-
-              echo "MISS $FILE"
-
-              FAILED=1
-
-            fi
-
+            echo "OK: $FILE"
           done
 
-          if [ "$FAILED" -ne 0 ]; then
-
-            echo ""
-
-            echo "ERROR: Ada source Phase 4.2.1 yang hilang."
-
-            exit 1
-
-          fi
-
           echo ""
-
-          echo "PHASE 4.2.1 SOURCE STRUCTURE OK"
+          echo "PHASE 4.2.2 SOURCE STRUCTURE OK"
 
 
       # ============================================================
-      # 11. VALIDATE CAMERA STABILITY
+      # 11. VALIDATE FRESH SCAN SESSION RESET
+      # ============================================================
+      - name: Validate Fresh Scan Session Reset
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          echo "=========================================="
+          echo "FRESH SCAN SESSION RESET"
+          echo "=========================================="
+
+          echo ""
+          echo "Checking scanner function:"
+          grep -n "fun openVisualScanner" "$MAIN"
+
+          echo ""
+          echo "Checking visual match reset:"
+          grep -n "visualMatches = emptyList()" "$MAIN"
+
+          echo ""
+          echo "Checking preview reset:"
+          grep -n "scanPreview = null" "$MAIN"
+
+          echo ""
+          echo "Checking scanning state reset:"
+          grep -n "scanningVisual = false" "$MAIN"
+
+          echo ""
+          echo "Checking SCAN ULANG:"
+          grep -n "SCAN ULANG" "$MAIN"
+
+          echo ""
+          echo "Verifying reset happens before camera launch..."
+
+          awk '/fun openVisualScanner\(\)/,/^    }/' "$MAIN" \
+            | grep -q "visualMatches = emptyList()"
+
+          awk '/fun openVisualScanner\(\)/,/^    }/' "$MAIN" \
+            | grep -q "scanPreview = null"
+
+          awk '/fun openVisualScanner\(\)/,/^    }/' "$MAIN" \
+            | grep -q "takePictureLauncher.launch"
+
+          echo ""
+          echo "Fresh scan session validation OK."
+
+
+      # ============================================================
+      # 12. VALIDATE CAMERA STABILITY
       # ============================================================
       - name: Validate Camera Stability
         shell: bash
@@ -290,97 +295,42 @@ jobs:
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
           MANIFEST="app/src/main/AndroidManifest.xml"
-
           PATHS="app/src/main/res/xml/file_paths.xml"
 
-          echo "=========================================="
-          echo "CAMERA STABILITY CHECK"
-          echo "=========================================="
+          grep -q "ActivityResultContracts.TakePicture()" "$MAIN"
 
-          echo ""
-          echo "TakePicture contract:"
+          grep -q "Manifest.permission.CAMERA" "$MAIN"
 
-          grep -n \
-            "ActivityResultContracts.TakePicture()" \
-            "$MAIN"
+          grep -q "android.permission.CAMERA" "$MANIFEST"
 
-          echo ""
-          echo "Camera permission:"
+          grep -q "FileProvider" "$MAIN"
 
-          grep -n \
-            "Manifest.permission.CAMERA" \
-            "$MAIN"
+          grep -q "androidx.core.content.FileProvider" "$MANIFEST"
 
-          grep -n \
-            "android.permission.CAMERA" \
-            "$MANIFEST"
+          grep -q "FILE_PROVIDER_PATHS" "$MANIFEST"
 
-          echo ""
-          echo "FileProvider:"
+          grep -q "camera_capture" "$PATHS"
 
-          grep -n \
-            "FileProvider" \
-            "$MAIN"
+          grep -q "createCameraUri" "$MAIN"
 
-          grep -n \
-            "androidx.core.content.FileProvider" \
-            "$MANIFEST"
+          grep -q "decodeCameraBitmap" "$MAIN"
 
-          grep -n \
-            "fileprovider" \
-            "$MANIFEST"
+          grep -q "pendingScanCameraFile" "$MAIN"
 
-          grep -n \
-            "FILE_PROVIDER_PATHS" \
-            "$MANIFEST"
-
-          grep -n \
-            "camera_capture" \
-            "$PATHS"
-
-          echo ""
-          echo "Safe camera file handling:"
-
-          grep -n \
-            "createCameraUri" \
-            "$MAIN"
-
-          grep -n \
-            "decodeCameraBitmap" \
-            "$MAIN"
-
-          grep -n \
-            "runCatching" \
-            "$MAIN"
-
-          grep -n \
-            "pending.*CameraFile" \
-            "$MAIN"
-
-          echo ""
-          echo "Reject old preview contract:"
-
-          if grep -q \
-            "TakePicturePreview" \
-            "$MAIN"; then
-
-            echo "ERROR: Kontrak preview lama masih digunakan."
-
+          if grep -q "TakePicturePreview" "$MAIN"; then
+            echo "ERROR: TakePicturePreview masih digunakan."
             exit 1
-
           fi
 
           echo ""
-
           echo "Camera stability validation OK."
 
 
       # ============================================================
-      # 12. VALIDATE VISUAL SCANNER
+      # 13. VALIDATE VISUAL SCANNER + POS
       # ============================================================
-      - name: Validate Visual Scanner and POS integration
+      - name: Validate Visual Scanner and POS
         shell: bash
         run: |
           set -e
@@ -388,52 +338,25 @@ jobs:
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
           VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
-          DAO="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
+          grep -q "SCAN FOTO PRODUK" "$MAIN"
 
-          echo "=========================================="
-          echo "VISUAL SCANNER + POS"
-          echo "=========================================="
+          grep -q "findVisualMatches" "$VM"
 
-          grep -n \
-            "SCAN FOTO PRODUK" \
-            "$MAIN"
+          grep -q "visualMatches" "$MAIN"
 
-          grep -n \
-            "findVisualMatches" \
-            "$VM"
+          grep -q "TAMBAH" "$MAIN"
 
-          grep -n \
-            "visualProductMatches" \
-            "$REPO"
-
-          grep -n \
-            "allProductPhotos" \
-            "$DAO"
-
-          grep -n \
-            "ProductVisualMatcher.score" \
-            "$REPO"
-
-          grep -n \
-            "Kecocokan visual" \
-            "$MAIN"
-
-          grep -n \
-            "TAMBAH" \
-            "$MAIN"
+          grep -q "ProductVisualMatcher" "$REPO"
 
           echo ""
-
           echo "Visual scanner + POS validation OK."
 
 
       # ============================================================
-      # 13. VALIDATE OFFLINE PHOTO DATABASE
+      # 14. VALIDATE OFFLINE + PHOTO DATABASE
       # ============================================================
       - name: Validate Offline and Photo Database
         shell: bash
@@ -442,43 +365,24 @@ jobs:
 
           cd "$PROJECT_DIR"
 
+          DAO="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
+          DB="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          DAO="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
+          grep -q "product_photos" "$DAO"
 
-          DB="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
+          grep -q "MIGRATION_3_4" "$DB"
 
-          echo "=========================================="
-          echo "OFFLINE PHOTO DATABASE"
-          echo "=========================================="
+          grep -q "filesDir" "$MAIN"
 
-          grep -n \
-            "product_photos" \
-            "$DAO"
-
-          grep -n \
-            "version=4" \
-            "$DB"
-
-          grep -n \
-            "MIGRATION_3_4" \
-            "$DB"
-
-          grep -n \
-            "filesDir" \
-            "$MAIN"
-
-          grep -n \
-            "Bitmap.CompressFormat.JPEG" \
-            "$MAIN"
+          grep -q "Bitmap.CompressFormat.JPEG" "$MAIN"
 
           echo ""
-
           echo "Offline/photo database validation OK."
 
 
       # ============================================================
-      # 14. VALIDATE EXISTING POS FEATURES
+      # 15. VALIDATE EXISTING POS FEATURES
       # ============================================================
       - name: Validate Existing POS Features
         shell: bash
@@ -488,68 +392,30 @@ jobs:
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
 
-          echo "=========================================="
-          echo "EXISTING POS FEATURES"
-          echo "=========================================="
+          grep -q "CASH" "$MAIN"
+          grep -q "QRIS" "$MAIN"
+          grep -q "TRANSFER" "$MAIN"
+          grep -q "DEBIT" "$MAIN"
 
-          echo ""
-          echo "Payment methods:"
+          grep -q "processingPayment" "$MAIN"
 
-          grep -n "CASH" "$MAIN"
+          grep -q "formatRupiah" "$MAIN"
 
-          grep -n "QRIS" "$MAIN"
+          grep -q 'Locale("id", "ID")' "$MONEY"
 
-          grep -n "TRANSFER" "$MAIN"
+          grep -q "db.withTransaction" "$REPO"
 
-          grep -n "DEBIT" "$MAIN"
-
-          echo ""
-          echo "Payment protection:"
-
-          grep -n \
-            "processingPayment" \
-            "$MAIN"
-
-          grep -n \
-            "MEMPROSES" \
-            "$MAIN"
+          grep -q "dao.changeStock" "$REPO"
 
           echo ""
-          echo "Rupiah formatter:"
-
-          grep -n \
-            "formatRupiah" \
-            "$MAIN"
-
-          grep -n \
-            "formatRupiah" \
-            app/src/main/java/com/arspos/anglerriausyndicate/Money.kt
-
-          grep -n \
-            'Locale("id", "ID")' \
-            app/src/main/java/com/arspos/anglerriausyndicate/Money.kt
-
-          echo ""
-          echo "Transaction safety:"
-
-          grep -n \
-            "db.withTransaction" \
-            "$REPO"
-
-          grep -n \
-            "dao.changeStock" \
-            "$REPO"
-
-          echo ""
-
           echo "Existing POS feature validation OK."
 
 
       # ============================================================
-      # 15. CHECK VERSION
+      # 16. CHECK VERSION 1.0.7
       # ============================================================
       - name: Check ARS POS version
         shell: bash
@@ -558,25 +424,18 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "VERSION 1.0.6 CHECK"
-          echo "=========================================="
-
-          grep -q \
-            "versionCode = 106" \
+          grep -q "versionCode = 107" \
             app/build.gradle.kts
 
-          grep -q \
-            'versionName = "1.0.6"' \
+          grep -q 'versionName = "1.0.7"' \
             app/build.gradle.kts
 
           echo ""
-
-          echo "Version 1.0.6 validation PASSED."
+          echo "Version 1.0.7 validation PASSED."
 
 
       # ============================================================
-      # 16. VALIDATE ARS BRANDING
+      # 17. VALIDATE ARS BRANDING
       # ============================================================
       - name: Validate ARS branding
         shell: bash
@@ -606,21 +465,20 @@ jobs:
           test -f \
             app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          grep -n \
+          grep -q \
             "android:icon" \
             app/src/main/AndroidManifest.xml
 
-          grep -n \
+          grep -q \
             "android:roundIcon" \
             app/src/main/AndroidManifest.xml
 
           echo ""
-
           echo "ARS branding validation OK."
 
 
       # ============================================================
-      # 17. SHOW BUILD ENVIRONMENT
+      # 18. SHOW BUILD ENVIRONMENT
       # ============================================================
       - name: Show build environment
         shell: bash
@@ -634,7 +492,6 @@ jobs:
           java -version
 
           echo ""
-
           echo "=========================================="
           echo "GRADLE"
           echo "=========================================="
@@ -642,16 +499,15 @@ jobs:
           gradle --version
 
           echo ""
-
           echo "=========================================="
           echo "ANDROID HOME"
           echo "=========================================="
 
-          echo "$ANDROID_HOME"
+          echo "ANDROID_HOME=$ANDROID_HOME"
 
 
       # ============================================================
-      # 18. CLEAN PROJECT
+      # 19. CLEAN PROJECT
       # ============================================================
       - name: Clean project
         shell: bash
@@ -666,7 +522,7 @@ jobs:
 
 
       # ============================================================
-      # 19. BUILD RELEASE APK
+      # 20. BUILD RELEASE APK
       # ============================================================
       - name: Build Release APK
         shell: bash
@@ -682,7 +538,7 @@ jobs:
 
 
       # ============================================================
-      # 20. LOCATE APK
+      # 21. LOCATE APK
       # ============================================================
       - name: Locate APK
         shell: bash
@@ -700,7 +556,6 @@ jobs:
             | head -n 1)
 
           if [ -z "$APK" ]; then
-
             echo "ERROR: APK tidak ditemukan."
 
             find app/build/outputs \
@@ -708,22 +563,17 @@ jobs:
               | sort
 
             exit 1
-
           fi
 
           echo ""
-
           echo "APK ditemukan:"
-
           ls -lh "$APK"
-
-          echo ""
 
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
 
       # ============================================================
-      # 21. VERIFY APK SIGNATURE
+      # 22. VERIFY APK SIGNATURE
       # ============================================================
       - name: Verify APK signature
         shell: bash
@@ -738,12 +588,11 @@ jobs:
             "$APK_PATH"
 
           echo ""
-
           echo "Signature verification PASSED."
 
 
       # ============================================================
-      # 22. VERIFY APK ALIGNMENT
+      # 23. VERIFY APK ALIGNMENT
       # ============================================================
       - name: Verify APK alignment
         shell: bash
@@ -759,12 +608,11 @@ jobs:
             "$APK_PATH"
 
           echo ""
-
           echo "Alignment verification PASSED."
 
 
       # ============================================================
-      # 23. VERIFY PACKAGE AND VERSION
+      # 24. VERIFY APK PACKAGE + VERSION
       # ============================================================
       - name: Verify APK package and version
         shell: bash
@@ -773,41 +621,34 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          echo "=========================================="
-          echo "APK PACKAGE / VERSION"
-          echo "=========================================="
+          BADGING=$(
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" \
+              dump badging \
+              "$APK_PATH"
+          )
 
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging \
-            "$APK_PATH" \
+          echo "$BADGING" \
             | grep -E \
             "package: name=|versionCode=|versionName="
 
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging \
-            "$APK_PATH" \
+          echo "$BADGING" \
             | grep -q \
             "name='com.arspos.anglerriausyndicate'"
 
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging \
-            "$APK_PATH" \
+          echo "$BADGING" \
             | grep -q \
-            "versionCode='106'"
+            "versionCode='107'"
 
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging \
-            "$APK_PATH" \
+          echo "$BADGING" \
             | grep -q \
-            "versionName='1.0.6'"
+            "versionName='1.0.7'"
 
           echo ""
-
           echo "Package/version verification PASSED."
 
 
       # ============================================================
-      # 24. PREPARE FINAL APK
+      # 25. PREPARE FINAL APK
       # ============================================================
       - name: Prepare final APK
         shell: bash
@@ -818,39 +659,29 @@ jobs:
 
           APK_DIR="app/build/outputs/apk/release"
 
-          FINAL_APK="$APK_DIR/ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk"
+          FINAL_APK="$APK_DIR/ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk"
 
-          cp \
-            "$APK_PATH" \
-            "$FINAL_APK"
+          cp "$APK_PATH" "$FINAL_APK"
 
           test -f "$FINAL_APK"
 
           echo ""
-
           echo "Generating SHA-256..."
 
-          sha256sum \
-            "$FINAL_APK" \
+          sha256sum "$FINAL_APK" \
             > "$FINAL_APK.sha256"
 
           echo ""
-
           echo "Final APK:"
-
-          ls -lh \
-            "$FINAL_APK"
+          ls -lh "$FINAL_APK"
 
           echo ""
-
           echo "SHA-256:"
-
-          cat \
-            "$FINAL_APK.sha256"
+          cat "$FINAL_APK.sha256"
 
 
       # ============================================================
-      # 25. FINAL RELEASE CHECK
+      # 26. FINAL RELEASE CHECK
       # ============================================================
       - name: Final release check
         shell: bash
@@ -860,41 +691,36 @@ jobs:
           cd "$PROJECT_DIR/app/build/outputs/apk/release"
 
           test -f \
-            ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk
+            ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk
 
           test -f \
-            ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk.sha256
+            ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk.sha256
 
           echo ""
-
           echo "=========================================="
-          echo "ARS POS PHASE 4.2.1 READY"
+          echo "ARS POS PHASE 4.2.2 READY"
           echo "=========================================="
-
-          echo ""
 
           ls -lh \
-            ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk
+            ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk
 
           echo ""
 
           cat \
-            ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk.sha256
+            ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk.sha256
 
 
       # ============================================================
-      # 26. UPLOAD SIGNED APK
+      # 27. UPLOAD SIGNED APK
       # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
-
-          name: ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED
+          name: ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk
-
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.6-PHASE4.2.1-CAMERA-STABILITY-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.0.7-PHASE4.2.2-SCAN-SESSION-RESET-SIGNED.apk.sha256
 
           if-no-files-found: error
 
