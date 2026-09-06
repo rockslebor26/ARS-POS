@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.5
+    name: Build ARS POS Phase 4.3.2.6
     runs-on: ubuntu-latest
 
     steps:
@@ -45,12 +45,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Check Phase 4.3.2.5 ZIP
+      - name: Check Phase 4.3.2.6 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_5_PRODUCT_MASTER_STUDIO_FULL_FIXED.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED.zip"
 
           test -f "$ZIP_FILE" || {
             echo "ZIP tidak ditemukan: $ZIP_FILE"
@@ -89,7 +89,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "PROJECT_DIR=$PROJECT_DIR"
 
-      - name: Validate Phase 4.3.2.5 sources
+      - name: Validate Phase 4.3.2.6 sources
         shell: bash
         run: |
           set -e
@@ -130,6 +130,11 @@ jobs:
           grep -q 'MIGRATION_4_5' app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
           grep -q 'MediaMetadataRetriever' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
           grep -q 'KELENGKAPAN MASTER' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          grep -q 'MasterVerificationResult' app/src/main/java/com/arspos/anglerriausyndicate/MasterVerificationResult.kt
+          grep -q 'verifyProductMaster' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          grep -q 'UJI PENGENALAN MASTER' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          grep -q 'master_verified_' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          grep -q 'refs.size >= 3' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
           echo "Source structure + Master Studio validation OK."
 
@@ -237,10 +242,10 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          grep -q 'versionCode = 111' app/build.gradle.kts
-          grep -q 'versionName = "1.1.1"' app/build.gradle.kts
+          grep -q 'versionCode = 112' app/build.gradle.kts
+          grep -q 'versionName = "1.1.2"' app/build.gradle.kts
 
-          echo "Version 1.1.1 OK."
+          echo "Version 1.1.2 OK."
 
       - name: Validate branding
         shell: bash
@@ -320,12 +325,12 @@ jobs:
             "name='com.arspos.anglerriausyndicate'"
 
           echo "$BADGING" | grep -q \
-            "versionCode='111'"
+            "versionCode='112'"
 
           echo "$BADGING" | grep -q \
-            "versionName='1.1.1'"
+            "versionName='1.1.2'"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED.apk"
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED.apk"
 
           cp "$APK" "$FINAL"
 
@@ -340,9 +345,9 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED
+          name: ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.1-PHASE4.3.2.5-PRODUCT-MASTER-STUDIO-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED.apk.sha256
           if-no-files-found: error
           retention-days: 30
