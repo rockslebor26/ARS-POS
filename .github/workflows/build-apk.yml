@@ -31,7 +31,9 @@ jobs:
         shell: bash
         run: |
           set -e
+
           yes | sdkmanager --licenses >/dev/null || true
+
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -42,111 +44,274 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Find Phase 4.3.2.8 ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE="ARS_POS_PHASE4_3_2_8_RECOGNITION_ENGINE_V3.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: ZIP tidak ditemukan:"
+            echo "$ZIP_FILE"
+            echo ""
+            echo "File di repository:"
+            find . -maxdepth 2 -type f | sort
+            exit 1
+          fi
+
+          echo "ZIP ditemukan:"
+          ls -lh "$ZIP_FILE"
+
+          unzip -t "$ZIP_FILE"
+
+          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+
+      - name: Extract ARS POS project
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf extracted
+          mkdir -p extracted
+
+          unzip -o "$ZIP_FILE" -d extracted
+
+          echo ""
+          echo "Isi project:"
+          find extracted -maxdepth 3 -type f | sort | head -100
+
+      - name: Locate Gradle project
+        shell: bash
+        run: |
+          set -e
+
+          SETTINGS=$(find extracted \
+            -type f \
+            -name "settings.gradle.kts" \
+            | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle.kts tidak ditemukan."
+            find extracted -type f | sort
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+
+          echo "Gradle project ditemukan:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
       - name: Validate project structure
         shell: bash
         run: |
           set -e
+
+          cd "$PROJECT_DIR"
+
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f gradle.properties
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-          echo "Project structure OK."
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt
+
+          test -f \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+
+          echo "===================================="
+          echo "PROJECT STRUCTURE OK"
+          echo "===================================="
 
       - name: Validate Phase 4.3.2.8 V3 source
         shell: bash
         run: |
           set -e
+
+          cd "$PROJECT_DIR"
+
           ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
           INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          grep -q 'Phase 4.3.2.8' "$ENGINE"
-          grep -q 'MIN_MARGIN = 12' "$ENGINE"
-          grep -q 'ACCEPT_DISTINCTIVE_TEXT = 84' "$ENGINE"
-          grep -q 'aggregateVisual' "$ENGINE"
-          grep -q 'fieldTokenScoreDetailed' "$ENGINE"
-          grep -q 'identity' "$ENGINE"
-          grep -q 'analyzeMultiOrientation' "$INPUT"
-          grep -q 'SmartRecognitionEngine.recognize' "$REPO"
-          grep -q 'candidates = recognized.candidates' "$REPO"
-          grep -q 'candidates' "$MAIN"
-          grep -q 'TIDAK DIKENALI' "$MAIN"
+          grep -q "Phase 4.3.2.8" "$ENGINE"
 
-          grep -q 'versionCode = 118' app/build.gradle.kts
+          grep -q "aggregateVisual" "$ENGINE"
+
+          grep -q "fieldTokenScoreDetailed" "$ENGINE"
+
+          grep -q "MIN_MARGIN" "$ENGINE"
+
+          grep -q "ACCEPT_DISTINCTIVE_TEXT" "$ENGINE"
+
+          grep -q "analyzeMultiOrientation" "$INPUT"
+
+          grep -q "SmartRecognitionEngine.recognize" "$REPO"
+
+          grep -q "candidates" "$REPO"
+
+          grep -q "TIDAK DIKENALI" "$MAIN"
+
+          grep -q "versionCode = 118" app/build.gradle.kts
+
           grep -q 'versionName = "1.1.8"' app/build.gradle.kts
 
-          echo "Phase 4.3.2.8 V3 source validation OK."
+          echo "===================================="
+          echo "PHASE 4.3.2.8 V3 SOURCE OK"
+          echo "===================================="
 
-      - name: Validate ML Kit and camera
+      - name: Validate ML Kit
         shell: bash
         run: |
           set -e
-          GRADLE="app/build.gradle.kts"
+
+          cd "$PROJECT_DIR"
+
+          GRADLE_FILE="app/build.gradle.kts"
+
+          grep -q \
+            "com.google.mlkit:object-detection:17.0.2" \
+            "$GRADLE_FILE"
+
+          grep -q \
+            "com.google.mlkit:text-recognition:16.0.1" \
+            "$GRADLE_FILE"
+
+          grep -q \
+            "com.google.mlkit:barcode-scanning:17.3.0" \
+            "$GRADLE_FILE"
+
+          echo "ML KIT OK"
+
+      - name: Validate camera
+        shell: bash
+        run: |
+          set -e
+
+          cd "$PROJECT_DIR"
+
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE"
-          grep -q 'com.google.mlkit:text-recognition:16.0.1' "$GRADLE"
-          grep -q 'com.google.mlkit:barcode-scanning:17.3.0' "$GRADLE"
+          grep -q \
+            "ActivityResultContracts.TakePicture()" \
+            "$MAIN"
 
-          grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
-          grep -q 'Manifest.permission.CAMERA' "$MAIN"
-          grep -q 'FileProvider' app/src/main/AndroidManifest.xml
+          grep -q \
+            "Manifest.permission.CAMERA" \
+            "$MAIN"
 
-          ! grep -q 'TakePicturePreview' "$MAIN"
+          grep -q \
+            "FileProvider" \
+            app/src/main/AndroidManifest.xml
 
-          echo "ML Kit + camera validation OK."
+          if grep -q "TakePicturePreview" "$MAIN"; then
+            echo "ERROR: TakePicturePreview masih digunakan."
+            exit 1
+          fi
+
+          echo "CAMERA OK"
 
       - name: Validate existing POS
         shell: bash
         run: |
           set -e
+
+          cd "$PROJECT_DIR"
+
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
           MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
 
-          grep -q 'CASH' "$MAIN"
-          grep -q 'QRIS' "$MAIN"
-          grep -q 'TRANSFER' "$MAIN"
-          grep -q 'DEBIT' "$MAIN"
-          grep -q 'processingPayment' "$MAIN"
-          grep -q 'formatRupiah' "$MAIN"
+          grep -q "CASH" "$MAIN"
+          grep -q "QRIS" "$MAIN"
+          grep -q "TRANSFER" "$MAIN"
+          grep -q "DEBIT" "$MAIN"
 
-          grep -q 'db.withTransaction' "$REPO"
-          grep -q 'dao.changeStock' "$REPO"
+          grep -q "processingPayment" "$MAIN"
+
+          grep -q "formatRupiah" "$MAIN"
+
+          grep -q "db.withTransaction" "$REPO"
+
+          grep -q "dao.changeStock" "$REPO"
+
           grep -q 'Locale("id", "ID")' "$MONEY"
 
-          echo "Existing POS validation OK."
+          echo "EXISTING POS OK"
 
-      - name: Compile release Kotlin
+      - name: Build release APK
         shell: bash
         run: |
           set -e
-          gradle clean --no-daemon --stacktrace
-          gradle :app:assembleRelease --no-daemon --stacktrace --warning-mode all
+
+          cd "$PROJECT_DIR"
+
+          echo "===================================="
+          echo "GRADLE CLEAN"
+          echo "===================================="
+
+          gradle clean \
+            --no-daemon \
+            --stacktrace
+
+          echo "===================================="
+          echo "BUILD RELEASE APK"
+          echo "===================================="
+
+          gradle :app:assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            --warning-mode all
 
       - name: Verify APK
         shell: bash
         run: |
           set -e
 
-          APK=$(find app/build/outputs/apk/release \
+          cd "$PROJECT_DIR"
+
+          APK=$(find \
+            app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
-            -name '*.apk' \
+            -name "*.apk" \
             | head -n 1)
 
-          test -n "$APK"
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK tidak ditemukan."
+            exit 1
+          fi
+
+          echo "APK:"
+          echo "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -182,14 +347,19 @@ jobs:
 
           echo "FINAL=$FINAL" >> "$GITHUB_ENV"
 
-          ls -lh "$FINAL" "$FINAL.sha256"
+          echo "===================================="
+          echo "APK VERIFIED"
+          echo "===================================="
+
+          ls -lh "$FINAL"
+          cat "$FINAL.sha256"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: ARS-POS-1.1.8-PHASE4.3.2.8-RECOGNITION-ENGINE-V3-SIGNED
           path: |
-            ${{ env.FINAL }}
-            ${{ env.FINAL }}.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.8-PHASE4.3.2.8-RECOGNITION-ENGINE-V3-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.8-PHASE4.3.2.8-RECOGNITION-ENGINE-V3-SIGNED.apk.sha256
           if-no-files-found: error
           retention-days: 30
