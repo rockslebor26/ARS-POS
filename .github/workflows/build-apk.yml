@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.6 FIXED3
+    name: Build ARS POS Phase 4.3.2.6 FIXED4
     runs-on: ubuntu-latest
 
     steps:
@@ -47,12 +47,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Check Phase 4.3.2.6 ZIP FIXED3
+      - name: Check Phase 4.3.2.6 ZIP FIXED4
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED3.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED4.zip"
 
           test -f "$ZIP_FILE" || {
             echo "ZIP tidak ditemukan: $ZIP_FILE"
@@ -281,10 +281,10 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          grep -q 'versionCode = 113' app/build.gradle.kts
-          grep -q 'versionName = "1.1.3"' app/build.gradle.kts
+          grep -q 'versionCode = 114' app/build.gradle.kts
+          grep -q 'versionName = "1.1.4"' app/build.gradle.kts
 
-          echo "Version 1.1.3 OK."
+          echo "Version 1.1.4 OK."
 
       - name: Validate branding
         shell: bash
@@ -370,12 +370,12 @@ jobs:
             "name='com.arspos.anglerriausyndicate'"
 
           echo "$BADGING" | grep -q \
-            "versionCode='113'"
+            "versionCode='114'"
 
           echo "$BADGING" | grep -q \
-            "versionName='1.1.3'"
+            "versionName='1.1.4'"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk"
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk"
 
           cp "$APK" "$FINAL"
 
@@ -390,9 +390,9 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED
+          name: ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk.sha256
           if-no-files-found: error
           retention-days: 30
