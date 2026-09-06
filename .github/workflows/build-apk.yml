@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.7
+    name: Build ARS POS Phase 4.3.2.7.1
     runs-on: ubuntu-latest
 
     steps:
@@ -44,12 +44,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Check Phase 4.3.2.7 ZIP
+      - name: Check Phase 4.3.2.7.1 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_7_PRODUCT_RECOGNITION_ENGINE.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_7_1_RECOGNITION_ENGINE_V2.zip"
 
           test -f "$ZIP_FILE"
 
@@ -80,7 +80,7 @@ jobs:
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Validate Phase 4.3.2.7
+      - name: Validate Phase 4.3.2.7.1
         shell: bash
         run: |
           set -e
@@ -128,13 +128,13 @@ jobs:
           grep -q 'objectMatch.candidates.take(3)' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          grep -q 'versionCode = 115' \
+          grep -q 'versionCode = 116' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.1.5"' \
+          grep -q 'versionName = "1.1.6"' \
             app/build.gradle.kts
 
-          echo "Phase 4.3.2.7 source validation OK."
+          echo "Phase 4.3.2.7.1 source validation OK."
 
       - name: Build release APK
         shell: bash
@@ -188,12 +188,12 @@ jobs:
             "name='com.arspos.anglerriausyndicate'"
 
           echo "$BADGING" | grep -q \
-            "versionCode='115'"
+            "versionCode='116'"
 
           echo "$BADGING" | grep -q \
-            "versionName='1.1.5'"
+            "versionName='1.1.6'"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED.apk"
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.6-PHASE4.3.2.7.1-RECOGNITION-ENGINE-V2-SIGNED.apk"
 
           cp "$APK" "$FINAL"
 
@@ -204,11 +204,11 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED
+          name: ARS-POS-1.1.6-PHASE4.3.2.7.1-RECOGNITION-ENGINE-V2-SIGNED
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.6-PHASE4.3.2.7.1-RECOGNITION-ENGINE-V2-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.6-PHASE4.3.2.7.1-RECOGNITION-ENGINE-V2-SIGNED.apk.sha256
 
           if-no-files-found: error
 
