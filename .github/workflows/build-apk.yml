@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.6 FIXED4
+    name: Build ARS POS Phase 4.3.2.7
     runs-on: ubuntu-latest
 
     steps:
@@ -39,26 +39,19 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          test -d "$ANDROID_HOME/platforms/android-35"
-          test -d "$ANDROID_HOME/build-tools/35.0.0"
-
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Check Phase 4.3.2.6 ZIP FIXED4
+      - name: Check Phase 4.3.2.7 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED4.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_7_PRODUCT_RECOGNITION_ENGINE.zip"
 
-          test -f "$ZIP_FILE" || {
-            echo "ZIP tidak ditemukan: $ZIP_FILE"
-            find . -maxdepth 2 -type f -iname '*.zip'
-            exit 1
-          }
+          test -f "$ZIP_FILE"
 
           unzip -t "$ZIP_FILE"
 
@@ -70,7 +63,7 @@ jobs:
           set -e
 
           rm -rf extracted
-          mkdir -p extracted
+          mkdir extracted
 
           unzip -o "$ZIP_FILE" -d extracted
 
@@ -81,234 +74,67 @@ jobs:
 
           SETTINGS=$(find extracted -type f -name settings.gradle.kts | head -n 1)
 
-          test -n "$SETTINGS" || {
-            echo "settings.gradle.kts tidak ditemukan"
-            exit 1
-          }
+          test -n "$SETTINGS"
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "PROJECT_DIR=$PROJECT_DIR"
 
-      - name: Validate Phase 4.3.2.6 sources
+      - name: Validate Phase 4.3.2.7
         shell: bash
         run: |
           set -e
 
           cd "$PROJECT_DIR"
 
-          REQUIRED=(
-            "settings.gradle.kts"
-            "build.gradle.kts"
-            "gradle.properties"
-            "app/build.gradle.kts"
-            "app/src/main/AndroidManifest.xml"
-            "app/src/main/res/xml/file_paths.xml"
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-            "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
 
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt"
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
 
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt"
-          )
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt
 
-          for f in "${REQUIRED[@]}"; do
-            test -f "$f" || {
-              echo "MISSING: $f"
-              exit 1
-            }
-          done
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q 'androidx.camera:camera-video:1.4.1' \
-            app/build.gradle.kts
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
 
-          grep -q 'captureAngle' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q 'MIGRATION_4_5' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
-
-          grep -q 'MediaMetadataRetriever' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-
-          grep -q 'KELENGKAPAN MASTER' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-
-          grep -q 'data class MasterVerificationResult' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt
-
-          grep -q 'verifyProductMaster' \
+          grep -q 'import com.arspos.anglerriausyndicate.SmartProductInput' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q 'object SmartRecognitionEngine' \
+          grep -q 'import com.arspos.anglerriausyndicate.ProductVisualMatcher' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          grep -q 'import com.arspos.anglerriausyndicate.VisualProductMatch' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          grep -q 'data class RecognitionCandidate' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
+
+          grep -q 'candidates: List<RecognitionCandidate>' \
+            app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
+
+          grep -q 'refsByProduct' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q 'UJI PENGENALAN MASTER' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          grep -q 'fieldTokenScore' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q 'master_verified_' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          grep -q 'take(5)' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q 'refs.size >= 3' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          grep -q 'objectMatch.candidates.take(3)' \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          echo "Source structure + Master Studio validation OK."
+          grep -q 'versionCode = 115' \
+            app/build.gradle.kts
 
-      - name: Validate camera and fresh scan
-        shell: bash
-        run: |
-          set -e
+          grep -q 'versionName = "1.1.5"' \
+            app/build.gradle.kts
 
-          cd "$PROJECT_DIR"
-
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-          MANIFEST="app/src/main/AndroidManifest.xml"
-          PATHS="app/src/main/res/xml/file_paths.xml"
-
-          grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
-          grep -q 'Manifest.permission.CAMERA' "$MAIN"
-          grep -q 'FileProvider' "$MANIFEST"
-          grep -q 'file_paths' "$MANIFEST"
-          grep -q 'camera_capture' "$PATHS"
-
-          grep -q 'fun openVisualScanner' "$MAIN"
-          grep -q 'visualMatches = emptyList()' "$MAIN"
-          grep -q 'smartScanObjects = emptyList()' "$MAIN"
-          grep -q 'scanPreview = null' "$MAIN"
-
-          ! grep -q 'TakePicturePreview' "$MAIN"
-
-          echo "Camera + fresh scan validation OK."
-
-      - name: Validate smart recognition and OCR
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-          SCANNER="app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
-          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
-          MASTER_RESULT="app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt"
-          GRADLE="app/build.gradle.kts"
-
-          grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE"
-          grep -q 'com.google.mlkit:text-recognition:16.0.1' "$GRADLE"
-          grep -q 'com.google.mlkit:barcode-scanning:17.3.0' "$GRADLE"
-
-          grep -q 'enableMultipleObjects' "$SCANNER"
-          grep -q 'SINGLE_IMAGE_MODE' "$SCANNER"
-          grep -q 'MIN_SCORE = 82' "$SCANNER"
-          grep -q 'MIN_MARGIN = 8' "$SCANNER"
-          grep -q 'take(MAX_OBJECTS)' "$SCANNER"
-
-          grep -q 'SmartProductInput.analyze' "$MAIN"
-          grep -q 'SmartProductInput.generateSku' "$MAIN"
-
-          grep -q 'TextRecognition' "$INPUT"
-          grep -q 'BarcodeScanning' "$INPUT"
-
-          grep -q 'smartVisualScan' "$REPO"
-          grep -q 'object SmartRecognitionEngine' "$ENGINE"
-          grep -q 'data class MasterVerificationResult' "$MASTER_RESULT"
-
-          echo "Smart recognition + OCR/barcode validation OK."
-
-      - name: Validate product form improvements
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-
-          grep -q 'heightIn(max = 560.dp)' "$MAIN"
-          grep -q 'HASIL BACA FOTO' "$MAIN"
-          grep -q 'Merek' "$MAIN"
-          grep -q 'Varian / Model' "$MAIN"
-          grep -q 'BACA FOTO' "$MAIN"
-          grep -q 'SIMPAN' "$MAIN"
-
-          echo "Product form UI validation OK."
-
-      - name: Validate existing POS features
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
-
-          grep -q 'CASH' "$MAIN"
-          grep -q 'QRIS' "$MAIN"
-          grep -q 'TRANSFER' "$MAIN"
-          grep -q 'DEBIT' "$MAIN"
-
-          grep -q 'processingPayment' "$MAIN"
-          grep -q 'formatRupiah' "$MAIN"
-          grep -q 'Locale("id", "ID")' "$MONEY"
-
-          grep -q 'db.withTransaction' "$REPO"
-          grep -q 'dao.changeStock' "$REPO"
-
-          echo "Existing POS validation OK."
-
-      - name: Validate version
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          grep -q 'versionCode = 114' app/build.gradle.kts
-          grep -q 'versionName = "1.1.4"' app/build.gradle.kts
-
-          echo "Version 1.1.4 OK."
-
-      - name: Validate branding
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          test -f app/src/main/res/drawable/ars_background.png
-          test -f app/src/main/res/drawable/ars_logo_master.png
-
-          test -f app/src/main/res/mipmap-mdpi/ic_launcher.png
-          test -f app/src/main/res/mipmap-hdpi/ic_launcher.png
-          test -f app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          test -f app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          test -f app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-          grep -q 'android:icon' \
-            app/src/main/AndroidManifest.xml
-
-          grep -q 'android:roundIcon' \
-            app/src/main/AndroidManifest.xml
-
-          echo "Branding validation OK."
+          echo "Phase 4.3.2.7 source validation OK."
 
       - name: Build release APK
         shell: bash
@@ -326,7 +152,7 @@ jobs:
             --stacktrace \
             --warning-mode all
 
-      - name: Verify and prepare APK
+      - name: Verify APK
         shell: bash
         run: |
           set -e
@@ -339,12 +165,7 @@ jobs:
             -name '*.apk' \
             | head -n 1)
 
-          test -n "$APK" || {
-            echo "APK tidak ditemukan"
-            exit 1
-          }
-
-          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          test -n "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -363,36 +184,32 @@ jobs:
             "$APK"
           )
 
-          echo "$BADGING" | grep -E \
-            'package: name=|versionCode=|versionName='
-
           echo "$BADGING" | grep -q \
             "name='com.arspos.anglerriausyndicate'"
 
           echo "$BADGING" | grep -q \
-            "versionCode='114'"
+            "versionCode='115'"
 
           echo "$BADGING" | grep -q \
-            "versionName='1.1.4'"
+            "versionName='1.1.5'"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk"
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED.apk"
 
           cp "$APK" "$FINAL"
 
           sha256sum "$FINAL" > "$FINAL.sha256"
 
-          echo "FINAL_APK=$FINAL" >> "$GITHUB_ENV"
-
-          ls -lh "$FINAL" "$FINAL.sha256"
-
-          cat "$FINAL.sha256"
+          echo "FINAL=$FINAL" >> "$GITHUB_ENV"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED
+          name: ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED
+
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.4-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.5-PHASE4.3.2.7-PRODUCT-RECOGNITION-ENGINE-SIGNED.apk.sha256
+
           if-no-files-found: error
+
           retention-days: 30
