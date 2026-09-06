@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.6 FIXED
+    name: Build ARS POS Phase 4.3.2.6 FIXED3
     runs-on: ubuntu-latest
 
     steps:
@@ -47,12 +47,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Check Phase 4.3.2.6 ZIP FIXED
+      - name: Check Phase 4.3.2.6 ZIP FIXED3
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED2.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED3.zip"
 
           test -f "$ZIP_FILE" || {
             echo "ZIP tidak ditemukan: $ZIP_FILE"
@@ -317,7 +317,9 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          gradle clean --no-daemon --stacktrace
+          gradle clean \
+            --no-daemon \
+            --stacktrace
 
           gradle :app:assembleRelease \
             --no-daemon \
