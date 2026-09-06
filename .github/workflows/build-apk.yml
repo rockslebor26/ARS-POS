@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.6
+    name: Build ARS POS Phase 4.3.2.6 FIXED
     runs-on: ubuntu-latest
 
     steps:
@@ -31,7 +31,9 @@ jobs:
         shell: bash
         run: |
           set -e
+
           yes | sdkmanager --licenses >/dev/null || true
+
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -45,12 +47,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Check Phase 4.3.2.6 ZIP
+      - name: Check Phase 4.3.2.6 ZIP FIXED
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_6_MASTER_RECOGNITION_VERIFICATION_FULL_FIXED2.zip"
 
           test -f "$ZIP_FILE" || {
             echo "ZIP tidak ditemukan: $ZIP_FILE"
@@ -103,6 +105,7 @@ jobs:
             "app/build.gradle.kts"
             "app/src/main/AndroidManifest.xml"
             "app/src/main/res/xml/file_paths.xml"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
@@ -111,7 +114,12 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
@@ -125,16 +133,38 @@ jobs:
             }
           done
 
-          grep -q 'androidx.camera:camera-video:1.4.1' app/build.gradle.kts
-          grep -q 'captureAngle' app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt
-          grep -q 'MIGRATION_4_5' app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
-          grep -q 'MediaMetadataRetriever' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-          grep -q 'KELENGKAPAN MASTER' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-          grep -q 'MasterVerificationResult' app/src/main/java/com/arspos/anglerriausyndicate/MasterVerificationResult.kt
-          grep -q 'verifyProductMaster' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-          grep -q 'UJI PENGENALAN MASTER' app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-          grep -q 'master_verified_' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-          grep -q 'refs.size >= 3' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          grep -q 'androidx.camera:camera-video:1.4.1' \
+            app/build.gradle.kts
+
+          grep -q 'captureAngle' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt
+
+          grep -q 'MIGRATION_4_5' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
+
+          grep -q 'MediaMetadataRetriever' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+
+          grep -q 'KELENGKAPAN MASTER' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+
+          grep -q 'data class MasterVerificationResult' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt
+
+          grep -q 'verifyProductMaster' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          grep -q 'object SmartRecognitionEngine' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+
+          grep -q 'UJI PENGENALAN MASTER' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+
+          grep -q 'master_verified_' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          grep -q 'refs.size >= 3' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
           echo "Source structure + Master Studio validation OK."
 
@@ -154,6 +184,7 @@ jobs:
           grep -q 'FileProvider' "$MANIFEST"
           grep -q 'file_paths' "$MANIFEST"
           grep -q 'camera_capture' "$PATHS"
+
           grep -q 'fun openVisualScanner' "$MAIN"
           grep -q 'visualMatches = emptyList()' "$MAIN"
           grep -q 'smartScanObjects = emptyList()' "$MAIN"
@@ -174,6 +205,8 @@ jobs:
           SCANNER="app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
           INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+          MASTER_RESULT="app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt"
           GRADLE="app/build.gradle.kts"
 
           grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE"
@@ -188,9 +221,13 @@ jobs:
 
           grep -q 'SmartProductInput.analyze' "$MAIN"
           grep -q 'SmartProductInput.generateSku' "$MAIN"
+
           grep -q 'TextRecognition' "$INPUT"
           grep -q 'BarcodeScanning' "$INPUT"
+
           grep -q 'smartVisualScan' "$REPO"
+          grep -q 'object SmartRecognitionEngine' "$ENGINE"
+          grep -q 'data class MasterVerificationResult' "$MASTER_RESULT"
 
           echo "Smart recognition + OCR/barcode validation OK."
 
@@ -227,9 +264,11 @@ jobs:
           grep -q 'QRIS' "$MAIN"
           grep -q 'TRANSFER' "$MAIN"
           grep -q 'DEBIT' "$MAIN"
+
           grep -q 'processingPayment' "$MAIN"
           grep -q 'formatRupiah' "$MAIN"
           grep -q 'Locale("id", "ID")' "$MONEY"
+
           grep -q 'db.withTransaction' "$REPO"
           grep -q 'dao.changeStock' "$REPO"
 
@@ -242,10 +281,10 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          grep -q 'versionCode = 112' app/build.gradle.kts
-          grep -q 'versionName = "1.1.2"' app/build.gradle.kts
+          grep -q 'versionCode = 113' app/build.gradle.kts
+          grep -q 'versionName = "1.1.3"' app/build.gradle.kts
 
-          echo "Version 1.1.2 OK."
+          echo "Version 1.1.3 OK."
 
       - name: Validate branding
         shell: bash
@@ -263,8 +302,11 @@ jobs:
           test -f app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           test -f app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          grep -q 'android:icon' app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon' app/src/main/AndroidManifest.xml
+          grep -q 'android:icon' \
+            app/src/main/AndroidManifest.xml
+
+          grep -q 'android:roundIcon' \
+            app/src/main/AndroidManifest.xml
 
           echo "Branding validation OK."
 
@@ -292,7 +334,8 @@ jobs:
           APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
-            -name '*.apk' | head -n 1)
+            -name '*.apk' \
+            | head -n 1)
 
           test -n "$APK" || {
             echo "APK tidak ditemukan"
@@ -325,12 +368,12 @@ jobs:
             "name='com.arspos.anglerriausyndicate'"
 
           echo "$BADGING" | grep -q \
-            "versionCode='112'"
+            "versionCode='113'"
 
           echo "$BADGING" | grep -q \
-            "versionName='1.1.2'"
+            "versionName='1.1.3'"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED.apk"
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk"
 
           cp "$APK" "$FINAL"
 
@@ -345,9 +388,9 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED
+          name: ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.2-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.3-PHASE4.3.2.6-MASTER-RECOGNITION-VERIFICATION-FIXED-SIGNED.apk.sha256
           if-no-files-found: error
           retention-days: 30
