@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.16 Identity Engine V7
+    name: Build ARS POS Phase 4.3.2.17 Product Identity Engine V8
     runs-on: ubuntu-latest
 
     steps:
@@ -45,13 +45,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_16_PRODUCT_IDENTITY_ENGINE_V7.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8.zip"
           test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V7 tidak ditemukan"
+            echo "ERROR: ZIP V8 tidak ditemukan"
             find . -maxdepth 2 -type f -iname '*.zip' -print
             exit 1
           }
-
           unzip -t "$ZIP_FILE"
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
@@ -67,20 +66,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           SETTINGS=$(find extracted -type f -name settings.gradle.kts | head -n 1)
-
           test -n "$SETTINGS" || {
             echo "ERROR: settings.gradle.kts tidak ditemukan"
             exit 1
           }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
-
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V7 source files
+      - name: Validate V8 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -94,43 +90,26 @@ jobs:
           test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
           test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
 
-          grep -q 'Phase 4.3.2.16' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          grep -q 'Phase 4.3.2.17' app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          grep -q 'masterVerified' app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
+          grep -q 'IDENTITY-FIRST' app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          grep -q 'MIN_TEXT_GATE' app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          grep -q 'MIN_VISUAL_MARGIN' app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          grep -q 'center82' app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+          grep -q 'center68' app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+          grep -q 'centerAgreement' app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+          grep -q 'masterVerificationSettings' app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
+          grep -q 'verifiedProductIds' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q 'masterVerified' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
+          grep -q 'versionCode = 130' app/build.gradle.kts
+          grep -q 'versionName = "1.3.0"' app/build.gradle.kts
 
-          grep -q 'IDENTITY-FIRST' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          grep -q 'isLongObject' app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
+          grep -q 'LONG_OBJECT' PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8.md
+          grep -q 'MAX_OBJECTS = 12' app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
+          grep -q 'TAMBAH SEMUA KE KERANJANG' app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          grep -q 'MIN_TEXT_GATE' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
-
-          grep -q 'MIN_VISUAL_MARGIN' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
-
-          grep -q 'center82' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
-
-          grep -q 'center68' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
-
-          grep -q 'centerAgreement' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
-
-          grep -q 'masterVerificationSettings' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
-
-          grep -q 'verifiedProductIds' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-
-          grep -q 'versionCode = 129' \
-            app/build.gradle.kts
-
-          grep -q 'versionName = "1.2.9"' \
-            app/build.gradle.kts
-
-          echo 'V7 SOURCE VALIDATION OK'
+          echo 'V8 SOURCE VALIDATION OK'
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -224,7 +203,6 @@ jobs:
                           raise SystemExit(
                               f'Mismatch in {path}:{line}'
                           )
-
                       stack.pop()
 
                   i += 1
@@ -251,10 +229,7 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-
-          gradle clean \
-            --no-daemon \
-            --stacktrace
+          gradle clean --no-daemon --stacktrace
 
       - name: Build release APK
         shell: bash
@@ -273,11 +248,8 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
 
-          APK=$(find \
-            app/build/outputs/apk/release \
-            -type f \
-            -name '*.apk' \
-            | head -n 1)
+          APK=$(find app/build/outputs/apk/release \
+            -type f -name '*.apk' | head -n 1)
 
           test -n "$APK" || {
             echo 'ERROR: APK tidak ditemukan'
@@ -285,8 +257,7 @@ jobs:
           }
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging "$APK" \
-            | grep -q 'package: name='
+            dump badging "$APK" | grep -q 'package: name='
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify --verbose "$APK"
@@ -302,13 +273,10 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
 
-          APK=$(find \
-            app/build/outputs/apk/release \
-            -type f \
-            -name '*.apk' \
-            | head -n 1)
+          APK=$(find app/build/outputs/apk/release \
+            -type f -name '*.apk' | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.2.9-PHASE4.3.2.16-PRODUCT-IDENTITY-ENGINE-V7-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -319,10 +287,8 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.2.9-PHASE4.3.2.16-V7
-
+          name: ARS-POS-1.3.0-PHASE4.3.2.17-V8
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.9-PHASE4.3.2.16-PRODUCT-IDENTITY-ENGINE-V7-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.9-PHASE4.3.2.16-PRODUCT-IDENTITY-ENGINE-V7-SIGNED.apk.sha256
-
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk.sha256
           if-no-files-found: error
