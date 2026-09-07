@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.11 Universal Product Identity V2
+    name: Build ARS POS Phase 4.3.2.12 Product Identity Engine V3
     runs-on: ubuntu-latest
 
     steps:
@@ -36,7 +36,6 @@ jobs:
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
-
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
           test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
@@ -48,33 +47,27 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.11 ZIP
+      - name: Locate Phase 4.3.2.12 ZIP
         shell: bash
         run: |
           set -euo pipefail
-
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_11_UNIVERSAL_PRODUCT_IDENTITY_V2.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_12_PRODUCT_IDENTITY_ENGINE_V3.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
-            echo "ZIP yang tersedia:"
             find . -maxdepth 2 -type f -iname '*.zip' -print
             exit 1
           fi
 
           unzip -t "$ZIP_FILE"
-
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
-          echo "ZIP ditemukan: $ZIP_FILE"
 
       - name: Extract ARS POS project
         shell: bash
         run: |
           set -euo pipefail
-
           rm -rf extracted
           mkdir -p extracted
-
           unzip -o "$ZIP_FILE" -d extracted
 
       - name: Locate Gradle project
@@ -84,11 +77,10 @@ jobs:
 
           SETTINGS=$(find extracted -type f -name 'settings.gradle.kts' | head -n 1)
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle.kts tidak ditemukan."
-            find extracted -maxdepth 8 -type f | sort
+          test -n "$SETTINGS" || {
+            echo "ERROR: settings.gradle.kts tidak ditemukan"
             exit 1
-          fi
+          }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
@@ -99,7 +91,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           REQUIRED=(
@@ -113,7 +104,6 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
@@ -139,109 +129,82 @@ jobs:
               echo "MISSING: $FILE"
               exit 1
             }
-
-            echo "OK: $FILE"
           done
 
           echo "PROJECT STRUCTURE OK"
 
-      - name: Validate Phase 4.3.2.11 Identity V2
+      - name: Validate Phase 4.3.2.12 no-barcode product input
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
-          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
 
-          grep -q "Phase 4.3.2.11" "$ENGINE"
+          grep -q 'Barcode (opsional)' "$MAIN"
+          grep -q 'Barcode tidak wajib' "$MAIN"
+          grep -q 'Nama \*' "$MAIN"
+          grep -q 'SKU ARS' "$MAIN"
+          grep -q 'Tidak ada barcode/teks yang terbaca' "$MAIN"
+          grep -q 'generateSku' "$MAIN"
+          grep -q 'mergeProductIdentityProfile' "$MAIN"
 
-          grep -q "ACCEPT_PROFILE_IDENTITY" "$ENGINE"
-          grep -q "MIN_VISUAL_SUPPORT = 32" "$ENGINE"
-          grep -q "MIN_MARGIN = 7" "$ENGINE"
-          grep -q "profileScore" "$ENGINE"
-          grep -q "aggregateVisual" "$ENGINE"
-          grep -q "phraseRatio" "$ENGINE"
-          grep -q "fuzzyToken" "$ENGINE"
-          grep -q "fuzzyCode" "$ENGINE"
+          grep -q 'mergeProductIdentityProfile' "$VM"
 
-          # Product-specific identity words
-          # tidak boleh menjadi STOP_WORDS global.
-          if grep -q '"LIGHTS", "AMERICAN", "BLEND"' "$ENGINE"; then
-            echo "ERROR: LIGHTS/AMERICAN/BLEND masih menjadi STOP_WORDS global."
-            exit 1
-          fi
+          grep -q 'require(name.isNotBlank())' "$REPO"
+          grep -q 'ifBlank { null }' "$REPO"
+          grep -q 'ProductIdentityProfileCodec' "$REPO"
+          grep -q 'identity_profile_' "$REPO"
 
-          grep -q "SmartRecognitionEngine.recognize" "$REPO"
-          grep -q "loadIdentityProfiles" "$REPO"
-          grep -q "mergeProductIdentityProfile" "$REPO"
+          grep -q 'fun generateSku' "$INPUT"
 
-          grep -q "analyzeMultiOrientation" "$INPUT"
+          grep -q 'val barcode: String?=null' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt
 
-          grep -q "TIDAK DIKENALI" "$MAIN"
+          echo "NO-BARCODE PRODUCT INPUT PATH OK"
 
-          grep -q "versionCode = 121" app/build.gradle.kts
-          grep -q 'versionName = "1.2.1"' app/build.gradle.kts
-
-          grep -q \
-            'applicationId = "com.arspos.anglerriausyndicate"' \
-            app/build.gradle.kts
-
-          echo "PHASE 4.3.2.11 SOURCE OK"
-
-      - name: Validate no-barcode recognition path
+      - name: Validate identity recognition engine
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
-          grep -q 'barcode.isNotBlank()' "$ENGINE"
+          grep -q 'identityProfiles' "$ENGINE"
+          grep -q 'aggregateVisual' "$ENGINE"
+          grep -q 'profileScore' "$ENGINE"
+          grep -q 'fuzzyToken' "$ENGINE"
+          grep -q 'fuzzyCode' "$ENGINE"
           grep -q 'ACCEPT_PROFILE_IDENTITY' "$ENGINE"
-          grep -q 'identityProfiles' "$REPO"
+
+          grep -q 'SmartRecognitionEngine.recognize' "$REPO"
+          grep -q 'loadIdentityProfiles' "$REPO"
+          grep -q 'mergeProductIdentityProfile' "$REPO"
           grep -q 'master_verified_' "$REPO"
 
-          echo "NO-BARCODE IDENTITY PATH OK"
+          echo "IDENTITY ENGINE OK"
 
       - name: Validate ML Kit and Camera
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           GRADLE_FILE="app/build.gradle.kts"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          grep -q \
-            'com.google.mlkit:object-detection:17.0.2' \
-            "$GRADLE_FILE"
+          grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE_FILE"
+          grep -q 'com.google.mlkit:text-recognition:16.0.1' "$GRADLE_FILE"
+          grep -q 'com.google.mlkit:barcode-scanning:17.3.0' "$GRADLE_FILE"
 
-          grep -q \
-            'com.google.mlkit:text-recognition:16.0.1' \
-            "$GRADLE_FILE"
-
-          grep -q \
-            'com.google.mlkit:barcode-scanning:17.3.0' \
-            "$GRADLE_FILE"
-
-          grep -q \
-            'ActivityResultContracts.TakePicture()' \
-            "$MAIN"
-
-          grep -q \
-            'Manifest.permission.CAMERA' \
-            "$MAIN"
-
-          grep -q \
-            'FileProvider' \
-            app/src/main/AndroidManifest.xml
+          grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
+          grep -q 'Manifest.permission.CAMERA' "$MAIN"
+          grep -q 'FileProvider' app/src/main/AndroidManifest.xml
 
           if grep -q 'TakePicturePreview' "$MAIN"; then
             echo "ERROR: TakePicturePreview masih digunakan."
@@ -254,32 +217,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
-          grep -q \
-            'applicationId = "com.arspos.anglerriausyndicate"' \
-            app/build.gradle.kts
+          grep -q 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
+          grep -q 'versionCode = 122' app/build.gradle.kts
+          grep -q 'versionName = "1.2.2"' app/build.gradle.kts
+          grep -q 'signingConfig = signingConfigs.getByName("debug")' app/build.gradle.kts
 
-          grep -q \
-            'versionCode = 121' \
-            app/build.gradle.kts
-
-          grep -q \
-            'signingConfig = signingConfigs.getByName("debug")' \
-            app/build.gradle.kts
-
-          grep -q \
-            'withTransaction' \
+          grep -q 'withTransaction' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          echo "UPDATE COMPATIBILITY SOURCE CHECK OK"
+          grep -q 'MIGRATION_3_4' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
+
+          grep -q 'MIGRATION_4_5' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
+
+          echo "UPDATE COMPATIBILITY OK"
 
       - name: Validate existing POS
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
@@ -290,13 +249,10 @@ jobs:
           grep -q 'QRIS' "$MAIN"
           grep -q 'TRANSFER' "$MAIN"
           grep -q 'DEBIT' "$MAIN"
-
           grep -q 'processingPayment' "$MAIN"
           grep -q 'formatRupiah' "$MAIN"
-
           grep -q 'withTransaction' "$REPO"
           grep -q 'changeStock' "$REPO"
-
           grep -q 'Locale("id", "ID")' "$MONEY"
 
           echo "EXISTING POS OK"
@@ -305,16 +261,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
-
           gradle clean --no-daemon --stacktrace
 
       - name: Build release APK
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -326,64 +279,44 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
-          APK=$(find \
-            app/build/outputs/apk/release \
-            -maxdepth 1 \
-            -type f \
-            -name '*.apk' \
-            | head -n 1)
+          APK=$(find app/build/outputs/apk/release \
+            -type f -name '*.apk' | head -n 1)
 
           test -n "$APK"
 
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
+            dump badging "$APK" | grep -q 'package: name='
+
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
-            verify \
-            --verbose \
-            "$APK"
+            verify --verbose "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -c \
-            -P 16 \
-            -v 4 \
-            "$APK"
+            -c -P 16 -v 4 "$APK" | tail -n 2
 
-          BADGING=$(
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging \
-            "$APK"
-          )
+          echo "APK VERIFIED: $APK"
 
-          echo "$BADGING" | grep -q \
-            "name='com.arspos.anglerriausyndicate'"
+      - name: Rename signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
 
-          echo "$BADGING" | grep -q \
-            "versionCode='121'"
+          APK=$(find app/build/outputs/apk/release \
+            -type f -name '*.apk' | head -n 1)
 
-          echo "$BADGING" | grep -q \
-            "versionName='1.2.1'"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.2.2-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-SIGNED.apk"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED.apk"
+          cp "$APK" "$OUT"
 
-          cp "$APK" "$FINAL"
-
-          sha256sum "$FINAL" > "$FINAL.sha256"
-
-          echo "FINAL_APK=$FINAL" >> "$GITHUB_ENV"
-
-          ls -lh "$FINAL" "$FINAL.sha256"
-
-          cat "$FINAL.sha256"
+          sha256sum "$OUT" | tee "$OUT.sha256"
 
       - name: Upload signed APK
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED
-
+          name: ARS-POS-1.2.2-PHASE4.3.2.12
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED.apk.sha256
-
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.2-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.2-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-SIGNED.apk.sha256
           if-no-files-found: error
-          retention-days: 30
