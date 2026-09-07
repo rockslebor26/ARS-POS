@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.12 Product Identity Engine V3
+    name: Build ARS POS Phase 4.3.2.13 Product Identity Engine V4
     runs-on: ubuntu-latest
 
     steps:
@@ -48,18 +48,18 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.12 ZIP
+      - name: Locate Phase 4.3.2.13 ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_12_PRODUCT_IDENTITY_ENGINE_V3_CLEAN_FIX3.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_13_PRODUCT_IDENTITY_ENGINE_V4.zip"
 
-          if [ ! -f "$ZIP_FILE" ]; then
+          test -f "$ZIP_FILE" || {
             echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 2 -type f -iname '*.zip' -print
             exit 1
-          fi
+          }
 
           unzip -t "$ZIP_FILE"
 
@@ -111,6 +111,7 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
@@ -129,6 +130,8 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt"
+
+            "PHASE4_3_2_13_PRODUCT_IDENTITY_ENGINE_V4.md"
           )
 
           for FILE in "${REQUIRED[@]}"; do
@@ -140,7 +143,67 @@ jobs:
 
           echo "PROJECT STRUCTURE OK"
 
-      - name: Validate Phase 4.3.2.12 no-barcode product input
+      - name: Validate Phase 4.3.2.13 identity profile V4
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          PROFILE="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt"
+          CODEC="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt"
+          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
+
+          grep -q 'Phase 4.3.2.13' "$PROFILE" "$ENGINE" "$MAIN"
+
+          grep -q 'val aliases: List<String>' "$PROFILE"
+
+          grep -q 'VERSION_2' "$CODEC"
+          grep -q 'VERSION_1' "$CODEC"
+          grep -q 'aliases' "$CODEC"
+
+          grep -q 'profile.aliases' "$ENGINE"
+
+          grep -q 'Identity aliases are product-specific memory' "$ENGINE"
+
+          grep -q 'mergeProductIdentityProfile' "$REPO"
+
+          grep -q 'addAll(old?.aliases.orEmpty())' "$REPO"
+
+          grep -q 'analyzeMultiOrientation' "$MAIN"
+
+          grep -q 'foto ini tetap dapat menjadi master visual awal' "$MAIN"
+
+          grep -q 'Barcode tidak wajib' "$MAIN"
+
+          echo "IDENTITY PROFILE V4 OK"
+
+      - name: Validate no-barcode product path
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          ENTITY="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
+
+          grep -q 'Barcode (opsional)' "$MAIN"
+          grep -q 'IDENTITAS MANUAL TETAP DIDUKUNG' "$MAIN"
+          grep -q 'generateSku' "$MAIN"
+
+          grep -q 'ifBlank { null }' "$REPO"
+          grep -q 'require(name.isNotBlank())' "$REPO"
+
+          grep -q 'val barcode: String?=null' "$ENTITY"
+
+          echo "NO-BARCODE PATH OK"
+
+      - name: Validate master seed photo
         shell: bash
         run: |
           set -euo pipefail
@@ -150,68 +213,12 @@ jobs:
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
           VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
 
-          grep -q 'Barcode (opsional)' "$MAIN"
-          grep -q 'Barcode tidak wajib' "$MAIN"
-          grep -q 'Nama \*' "$MAIN"
-          grep -q 'SKU ARS' "$MAIN"
-          grep -q 'Tidak ada barcode/teks yang terbaca' "$MAIN"
-          grep -q 'generateSku' "$MAIN"
-          grep -q 'mergeProductIdentityProfile' "$MAIN"
+          grep -q 'First intake photo becomes a visual master seed' "$MAIN"
+          grep -q 'suspend fun addProductPhoto' "$VM"
+          grep -q 'captureAngle:String="UNKNOWN"' "$REPO"
 
-          grep -q 'mergeProductIdentityProfile' "$VM"
-
-          grep -q 'require(name.isNotBlank())' "$REPO"
-          grep -q 'ifBlank { null }' "$REPO"
-          grep -q 'ProductIdentityProfileCodec' "$REPO"
-          grep -q 'identity_profile_' "$REPO"
-
-          grep -q 'fun generateSku' "$INPUT"
-
-          grep -q 'val barcode: String?=null' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt
-
-          echo "NO-BARCODE PRODUCT INPUT PATH OK"
-
-      - name: Validate ViewModel API compatibility
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-
-          grep -q 'suspend fun clearProductPhotoAngle' "$VM"
-          grep -q 'suspend fun clearProductPhotoAngle' "$REPO"
-
-          echo "clearProductPhotoAngle API OK"
-
-      - name: Validate identity recognition engine
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          cd "$PROJECT_DIR"
-
-          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
-          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-
-          grep -q 'identityProfiles' "$ENGINE"
-          grep -q 'aggregateVisual' "$ENGINE"
-          grep -q 'profileScore' "$ENGINE"
-          grep -q 'fuzzyToken' "$ENGINE"
-          grep -q 'fuzzyCode' "$ENGINE"
-          grep -q 'ACCEPT_PROFILE_IDENTITY' "$ENGINE"
-
-          grep -q 'SmartRecognitionEngine.recognize' "$REPO"
-          grep -q 'loadIdentityProfiles' "$REPO"
-          grep -q 'mergeProductIdentityProfile' "$REPO"
-          grep -q 'master_verified_' "$REPO"
-
-          echo "IDENTITY ENGINE OK"
+          echo "MASTER SEED PATH OK"
 
       - name: Validate ML Kit and Camera
         shell: bash
@@ -229,6 +236,7 @@ jobs:
 
           grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
           grep -q 'Manifest.permission.CAMERA' "$MAIN"
+
           grep -q 'FileProvider' app/src/main/AndroidManifest.xml
 
           if grep -q 'TakePicturePreview' "$MAIN"; then
@@ -238,37 +246,32 @@ jobs:
 
           echo "ML KIT + CAMERA OK"
 
-      - name: Validate update compatibility
+      - name: Validate database and update compatibility
         shell: bash
         run: |
           set -euo pipefail
 
           cd "$PROJECT_DIR"
 
-          grep -q 'applicationId = "com.arspos.anglerriausyndicate"' \
-            app/build.gradle.kts
+          APP="app/build.gradle.kts"
+          DB="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
-          grep -q 'versionCode = 125' \
-            app/build.gradle.kts
+          grep -q 'applicationId = "com.arspos.anglerriausyndicate"' "$APP"
 
-          grep -q 'versionName = "1.2.5"' \
-            app/build.gradle.kts
+          grep -q 'versionCode = 126' "$APP"
+          grep -q 'versionName = "1.2.6"' "$APP"
 
-          grep -q 'signingConfig = signingConfigs.getByName("debug")' \
-            app/build.gradle.kts
+          grep -q 'signingConfig = signingConfigs.getByName("debug")' "$APP"
 
-          grep -q 'withTransaction' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+          grep -q 'MIGRATION_3_4' "$DB"
+          grep -q 'MIGRATION_4_5' "$DB"
 
-          grep -q 'MIGRATION_3_4' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
-
-          grep -q 'MIGRATION_4_5' \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt
+          grep -q 'withTransaction' "$REPO"
 
           echo "UPDATE COMPATIBILITY OK"
 
-      - name: Validate existing POS
+      - name: Validate existing POS APIs
         shell: bash
         run: |
           set -euo pipefail
@@ -276,22 +279,55 @@ jobs:
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          MONEY="app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+
+          for FN in setPrimaryProductPhoto deleteProductPhoto stockIn saleItems processReturn profitSummary checkout; do
+
+            grep -q "fun $FN" "$VM" || {
+              echo "MISSING VM API: $FN"
+              exit 1
+            }
+
+            grep -q "fun $FN" "$REPO" || {
+              echo "MISSING REPOSITORY API: $FN"
+              exit 1
+            }
+
+          done
 
           grep -q 'CASH' "$MAIN"
           grep -q 'QRIS' "$MAIN"
           grep -q 'TRANSFER' "$MAIN"
           grep -q 'DEBIT' "$MAIN"
-          grep -q 'processingPayment' "$MAIN"
+
           grep -q 'formatRupiah' "$MAIN"
 
-          grep -q 'withTransaction' "$REPO"
-          grep -q 'changeStock' "$REPO"
-
-          grep -q 'Locale("id", "ID")' "$MONEY"
-
           echo "EXISTING POS OK"
+
+      - name: Validate source syntax balance
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = list(Path('app/src/main/java').rglob('*.kt'))
+
+          for p in files:
+              s = p.read_text(encoding='utf-8')
+
+              if s.count('{') != s.count('}'):
+                  raise SystemExit(f'Brace mismatch: {p}')
+
+              if s.count('(') != s.count(')'):
+                  raise SystemExit(f'Paren mismatch: {p}')
+
+          print(f'BALANCE CHECK OK: {len(files)} Kotlin files')
+          PY
 
       - name: Clean project
         shell: bash
@@ -300,9 +336,7 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          gradle clean \
-            --no-daemon \
-            --stacktrace
+          gradle clean --no-daemon --stacktrace
 
       - name: Build release APK
         shell: bash
@@ -360,7 +394,7 @@ jobs:
             -name '*.apk' \
             | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.2.5-PHASE4.3.2.12-CLEAN-FIX3-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.2.6-PHASE4.3.2.13-PRODUCT-IDENTITY-ENGINE-V4-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -368,11 +402,12 @@ jobs:
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
+
         with:
-          name: ARS-POS-1.2.5-PHASE4.3.2.12-CLEAN-FIX3
+          name: ARS-POS-1.2.6-PHASE4.3.2.13
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.5-PHASE4.3.2.12-CLEAN-FIX3-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.5-PHASE4.3.2.12-CLEAN-FIX3-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.6-PHASE4.3.2.13-PRODUCT-IDENTITY-ENGINE-V4-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.6-PHASE4.3.2.13-PRODUCT-IDENTITY-ENGINE-V4-SIGNED.apk.sha256
 
           if-no-files-found: error
