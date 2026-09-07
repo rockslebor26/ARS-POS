@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.10 Universal Product Identity
+    name: Build ARS POS Phase 4.3.2.11 Universal Product Identity V2
     runs-on: ubuntu-latest
 
     steps:
@@ -48,12 +48,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.10 ZIP
+      - name: Locate Phase 4.3.2.11 ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_10_UNIVERSAL_PRODUCT_IDENTITY.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_11_UNIVERSAL_PRODUCT_IDENTITY_V2.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
@@ -63,6 +63,7 @@ jobs:
           fi
 
           unzip -t "$ZIP_FILE"
+
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
           echo "ZIP ditemukan: $ZIP_FILE"
 
@@ -70,8 +71,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           rm -rf extracted
           mkdir -p extracted
+
           unzip -o "$ZIP_FILE" -d extracted
 
       - name: Locate Gradle project
@@ -88,6 +91,7 @@ jobs:
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
@@ -95,6 +99,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           REQUIRED=(
@@ -104,21 +109,25 @@ jobs:
             "app/build.gradle.kts"
             "app/src/main/AndroidManifest.xml"
             "app/src/main/res/xml/file_paths.xml"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/Money.kt"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt"
+
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
@@ -130,67 +139,109 @@ jobs:
               echo "MISSING: $FILE"
               exit 1
             }
+
             echo "OK: $FILE"
           done
 
           echo "PROJECT STRUCTURE OK"
 
-      - name: Validate Phase 4.3.2.10 Universal Product Identity
+      - name: Validate Phase 4.3.2.11 Identity V2
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
-          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
 
-          grep -q "Phase 4.3.2.10" "$ENGINE"
-          grep -q "ACCEPT_EXACT_BARCODE" "$ENGINE"
-          grep -q "ACCEPT_STRONG_IDENTITY" "$ENGINE"
-          grep -q "MIN_VISUAL_SUPPORT" "$ENGINE"
+          grep -q "Phase 4.3.2.11" "$ENGINE"
+
+          grep -q "ACCEPT_PROFILE_IDENTITY" "$ENGINE"
+          grep -q "MIN_VISUAL_SUPPORT = 32" "$ENGINE"
+          grep -q "MIN_MARGIN = 7" "$ENGINE"
+          grep -q "profileScore" "$ENGINE"
+          grep -q "aggregateVisual" "$ENGINE"
+          grep -q "phraseRatio" "$ENGINE"
           grep -q "fuzzyToken" "$ENGINE"
           grep -q "fuzzyCode" "$ENGINE"
-          grep -q "extractModelTokens" "$ENGINE"
-          grep -q "aggregateVisual" "$ENGINE"
-          grep -q "MIN_MARGIN = 8" "$ENGINE"
-          grep -q "profileScore" "$ENGINE"
-          grep -q "identityProfiles" "$ENGINE"
 
-          grep -q "Barcode (opsional)" "$MAIN"
+          # Product-specific identity words
+          # tidak boleh menjadi STOP_WORDS global.
+          if grep -q '"LIGHTS", "AMERICAN", "BLEND"' "$ENGINE"; then
+            echo "ERROR: LIGHTS/AMERICAN/BLEND masih menjadi STOP_WORDS global."
+            exit 1
+          fi
 
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt
-
-          grep -q "analyzeMultiOrientation" "$INPUT"
-          grep -q "joinedForModel" "$INPUT"
           grep -q "SmartRecognitionEngine.recognize" "$REPO"
           grep -q "loadIdentityProfiles" "$REPO"
           grep -q "mergeProductIdentityProfile" "$REPO"
-          grep -q "candidates = recognized.candidates" "$REPO"
+
+          grep -q "analyzeMultiOrientation" "$INPUT"
+
           grep -q "TIDAK DIKENALI" "$MAIN"
 
-          grep -q "versionCode = 120" app/build.gradle.kts
-          grep -q 'versionName = "1.2.0"' app/build.gradle.kts
+          grep -q "versionCode = 121" app/build.gradle.kts
+          grep -q 'versionName = "1.2.1"' app/build.gradle.kts
 
-          echo "PHASE 4.3.2.10 SOURCE OK"
+          grep -q \
+            'applicationId = "com.arspos.anglerriausyndicate"' \
+            app/build.gradle.kts
+
+          echo "PHASE 4.3.2.11 SOURCE OK"
+
+      - name: Validate no-barcode recognition path
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
+          grep -q 'barcode.isNotBlank()' "$ENGINE"
+          grep -q 'ACCEPT_PROFILE_IDENTITY' "$ENGINE"
+          grep -q 'identityProfiles' "$REPO"
+          grep -q 'master_verified_' "$REPO"
+
+          echo "NO-BARCODE IDENTITY PATH OK"
 
       - name: Validate ML Kit and Camera
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           GRADLE_FILE="app/build.gradle.kts"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE_FILE"
-          grep -q 'com.google.mlkit:text-recognition:16.0.1' "$GRADLE_FILE"
-          grep -q 'com.google.mlkit:barcode-scanning:17.3.0' "$GRADLE_FILE"
-          grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
-          grep -q 'Manifest.permission.CAMERA' "$MAIN"
-          grep -q 'FileProvider' app/src/main/AndroidManifest.xml
+          grep -q \
+            'com.google.mlkit:object-detection:17.0.2' \
+            "$GRADLE_FILE"
+
+          grep -q \
+            'com.google.mlkit:text-recognition:16.0.1' \
+            "$GRADLE_FILE"
+
+          grep -q \
+            'com.google.mlkit:barcode-scanning:17.3.0' \
+            "$GRADLE_FILE"
+
+          grep -q \
+            'ActivityResultContracts.TakePicture()' \
+            "$MAIN"
+
+          grep -q \
+            'Manifest.permission.CAMERA' \
+            "$MAIN"
+
+          grep -q \
+            'FileProvider' \
+            app/src/main/AndroidManifest.xml
 
           if grep -q 'TakePicturePreview' "$MAIN"; then
             echo "ERROR: TakePicturePreview masih digunakan."
@@ -199,10 +250,36 @@ jobs:
 
           echo "ML KIT + CAMERA OK"
 
+      - name: Validate update compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          grep -q \
+            'applicationId = "com.arspos.anglerriausyndicate"' \
+            app/build.gradle.kts
+
+          grep -q \
+            'versionCode = 121' \
+            app/build.gradle.kts
+
+          grep -q \
+            'signingConfig = signingConfigs.getByName("debug")' \
+            app/build.gradle.kts
+
+          grep -q \
+            'withTransaction' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          echo "UPDATE COMPATIBILITY SOURCE CHECK OK"
+
       - name: Validate existing POS
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
@@ -213,10 +290,13 @@ jobs:
           grep -q 'QRIS' "$MAIN"
           grep -q 'TRANSFER' "$MAIN"
           grep -q 'DEBIT' "$MAIN"
+
           grep -q 'processingPayment' "$MAIN"
           grep -q 'formatRupiah' "$MAIN"
+
           grep -q 'withTransaction' "$REPO"
           grep -q 'changeStock' "$REPO"
+
           grep -q 'Locale("id", "ID")' "$MONEY"
 
           echo "EXISTING POS OK"
@@ -225,50 +305,66 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
+
           gradle clean --no-daemon --stacktrace
 
       - name: Build release APK
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
-          gradle :app:assembleRelease --no-daemon --stacktrace --warning-mode all
+
+          gradle :app:assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            --warning-mode all
 
       - name: Verify APK
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
+          APK=$(find \
+            app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
-            -name '*.apk' | head -n 1)
+            -name '*.apk' \
+            | head -n 1)
 
           test -n "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
-            verify --verbose "$APK"
+            verify \
+            --verbose \
+            "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -c -P 16 -v 4 "$APK"
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
 
           BADGING=$(
             "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging "$APK"
+            dump badging \
+            "$APK"
           )
 
           echo "$BADGING" | grep -q \
             "name='com.arspos.anglerriausyndicate'"
 
           echo "$BADGING" | grep -q \
-            "versionCode='120'"
+            "versionCode='121'"
 
           echo "$BADGING" | grep -q \
-            "versionName='1.2.0'"
+            "versionName='1.2.1'"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED.apk"
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED.apk"
 
           cp "$APK" "$FINAL"
 
@@ -283,9 +379,11 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED
+          name: ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED
+
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.1-PHASE4.3.2.11-UNIVERSAL-PRODUCT-IDENTITY-V2-SIGNED.apk.sha256
+
           if-no-files-found: error
           retention-days: 30
