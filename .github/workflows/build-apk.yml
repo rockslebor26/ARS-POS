@@ -10,11 +10,10 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.17 Product Identity Engine V8 FIXED
+    name: Build ARS POS Phase 4.3.2.18 Product Identity Engine V8.1
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v5
 
@@ -31,7 +30,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           yes | sdkmanager --licenses >/dev/null || true
 
           sdkmanager --install \
@@ -44,16 +42,16 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.17 V8 FIXED ZIP
+      - name: Locate Phase 4.3.2.18 V8.1 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8_FIXED.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_18_PRODUCT_IDENTITY_ENGINE_V8_1.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP V8 FIXED tidak ditemukan."
-            echo "Daftar ZIP:"
+            echo "ERROR: ZIP V8.1 tidak ditemukan: $ZIP_FILE"
+            echo "Daftar ZIP yang tersedia:"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           fi
@@ -93,7 +91,7 @@ jobs:
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Validate V8 source files
+      - name: Validate V8.1 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -101,67 +99,93 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "========================================"
-          echo "VALIDASI ARS POS V8 FIXED"
+          echo "VALIDASI ARS POS PHASE 4.3.2.18 V8.1"
           echo "========================================"
 
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          grep -q "MIN_TEXT_GATE" \
+          grep -q 'versionCode = 131' app/build.gradle.kts
+
+          grep -q 'versionName = "1.3.1"' app/build.gradle.kts
+
+          grep -q 'MIN_TEXT_GATE' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q "MIN_VISUAL_MARGIN" \
+          grep -q 'MIN_VISUAL_MARGIN' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q "MIN_LONG_VISUAL_MARGIN" \
+          grep -q 'MIN_LONG_VISUAL_MARGIN' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q "ACCEPT_VISUAL_ONLY" \
+          grep -q 'ACCEPT_LONG_VISUAL_ONLY' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q "center82" \
+          grep -q 'isLikelyLongProduct' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+
+          grep -q 'center90' \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q "center68" \
+          grep -q 'center82' \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q "centerAgreement" \
+          grep -q 'center68' \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q "masterVerificationSettings" \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
+          grep -q 'projectionSimilarity' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q "verifiedProductIds" \
+          grep -q 'angle in intArrayOf(90, 180, 270)' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
+          grep -q 'isLikelyLongProduct' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q "versionCode = 130" \
-            app/build.gradle.kts
+          grep -q 'V8.1 LONG OBJECT LANE' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q 'versionName = "1.3.0"' \
-            app/build.gradle.kts
+          grep -q 'master_verified_' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q "isLongObject" \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
+          grep -q 'masterIdentityStrength' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
 
-          grep -q "LONG_OBJECT" \
-            PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8.md
+          grep -q 'isLikelyLongStudioProduct' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
 
-          grep -q "MAX_OBJECTS = 12" \
+          grep -q 'MAX_OBJECTS = 12' \
             app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
 
-          grep -q "TAMBAH SEMUA KE KERANJANG" \
+          grep -q 'TAMBAH SEMUA KE KERANJANG' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          echo "V8 SOURCE VALIDATION OK"
+          grep -q 'Phase 4.3.2.18 V8.1' \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
+
+          echo ""
+          echo "========================================"
+          echo "V8.1 SOURCE VALIDATION OK"
+          echo "========================================"
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -184,7 +208,7 @@ jobs:
           }
 
           def check(path):
-              text = path.read_text(encoding="utf-8")
+              text = path.read_text(encoding='utf-8')
 
               stack = []
               i = 0
@@ -368,7 +392,10 @@ jobs:
             -v 4 \
             "$APK"
 
+          echo ""
+          echo "========================================"
           echo "APK VERIFIED"
+          echo "========================================"
 
       - name: Rename APK and SHA256
         shell: bash
@@ -383,11 +410,18 @@ jobs:
             -name "*.apk" \
             | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk"
+          test -n "$APK" || exit 1
+
+          OUT="app/build/outputs/apk/release/ARS-POS-1.3.1-PHASE4.3.2.18-V8.1-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
           sha256sum "$OUT" > "$OUT.sha256"
+
+          echo ""
+          echo "========================================"
+          echo "FINAL APK"
+          echo "========================================"
 
           ls -lh \
             "$OUT" \
@@ -396,10 +430,10 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.3.0-PHASE4.3.2.17-V8
+          name: ARS-POS-1.3.1-PHASE4.3.2.18-V8.1
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.1-PHASE4.3.2.18-V8.1-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.1-PHASE4.3.2.18-V8.1-SIGNED.apk.sha256
 
           if-no-files-found: error
