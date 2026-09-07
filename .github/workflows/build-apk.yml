@@ -10,34 +10,22 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.17 Product Identity Engine V8
+    name: Build ARS POS Phase 4.3.2.17 Product Identity Engine V8 FIXED
     runs-on: ubuntu-latest
 
     steps:
 
-      # ============================================================
-      # 1. CHECKOUT
-      # ============================================================
       - name: Checkout repository
         uses: actions/checkout@v5
 
-
-      # ============================================================
-      # 2. JAVA 17
-      # ============================================================
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-
-      # ============================================================
-      # 3. ANDROID SDK
-      # ============================================================
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-
 
       - name: Install Android SDK packages
         shell: bash
@@ -51,29 +39,21 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-
-      # ============================================================
-      # 4. GRADLE 8.9
-      # ============================================================
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
-
-      # ============================================================
-      # 5. LOCATE V8 ZIP
-      # ============================================================
-      - name: Locate Phase 4.3.2.17 V8 ZIP
+      - name: Locate Phase 4.3.2.17 V8 FIXED ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8_FIXED.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP V8 tidak ditemukan."
-            echo "Daftar ZIP yang tersedia:"
+            echo "ERROR: ZIP V8 FIXED tidak ditemukan."
+            echo "Daftar ZIP:"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           fi
@@ -85,10 +65,6 @@ jobs:
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
-
-      # ============================================================
-      # 6. EXTRACT PROJECT
-      # ============================================================
       - name: Extract ARS POS project
         shell: bash
         run: |
@@ -99,13 +75,6 @@ jobs:
 
           unzip -o "$ZIP_FILE" -d extracted
 
-          echo "Isi hasil extract:"
-          find extracted -maxdepth 3 -type f | head -100
-
-
-      # ============================================================
-      # 7. LOCATE GRADLE PROJECT
-      # ============================================================
       - name: Locate Gradle project
         shell: bash
         run: |
@@ -115,21 +84,15 @@ jobs:
 
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: settings.gradle.kts tidak ditemukan."
-            find extracted -maxdepth 5 -type f -print
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
-          echo "Gradle project ditemukan:"
-          echo "$PROJECT_DIR"
+          echo "Gradle project: $PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-
-      # ============================================================
-      # 8. VALIDATE V8 SOURCE FILES
-      # ============================================================
       - name: Validate V8 source files
         shell: bash
         run: |
@@ -138,43 +101,20 @@ jobs:
           cd "$PROJECT_DIR"
 
           echo "========================================"
-          echo "VALIDASI FILE PHASE 4.3.2.17 V8"
+          echo "VALIDASI ARS POS V8 FIXED"
           echo "========================================"
 
-          # Core recognition engine
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-
-          # Database
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
-
-          # Visual recognition
           test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
-
-          # Product identity
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt
-
-          # Product master
           test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
-
-          # Main application
           test -f app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
-
-          echo "Semua file utama ditemukan."
-
-
-          # ========================================================
-          # CHECK RECOGNITION ENGINE
-          # ========================================================
 
           grep -q "MIN_TEXT_GATE" \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
@@ -188,11 +128,6 @@ jobs:
           grep -q "ACCEPT_VISUAL_ONLY" \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-
-          # ========================================================
-          # CHECK VISUAL MATCHER
-          # ========================================================
-
           grep -q "center82" \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
@@ -202,21 +137,11 @@ jobs:
           grep -q "centerAgreement" \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-
-          # ========================================================
-          # CHECK DATABASE
-          # ========================================================
-
           grep -q "masterVerificationSettings" \
             app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
 
           grep -q "verifiedProductIds" \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-
-
-          # ========================================================
-          # CHECK VERSION
-          # ========================================================
 
           grep -q "versionCode = 130" \
             app/build.gradle.kts
@@ -224,43 +149,20 @@ jobs:
           grep -q 'versionName = "1.3.0"' \
             app/build.gradle.kts
 
-
-          # ========================================================
-          # CHECK LONG OBJECT
-          # ========================================================
-
           grep -q "isLongObject" \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
 
           grep -q "LONG_OBJECT" \
             PHASE4_3_2_17_PRODUCT_IDENTITY_ENGINE_V8.md
 
-
-          # ========================================================
-          # CHECK MULTI OBJECT SCANNER
-          # ========================================================
-
           grep -q "MAX_OBJECTS = 12" \
             app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
-
-
-          # ========================================================
-          # CHECK SHOPPING CART
-          # ========================================================
 
           grep -q "TAMBAH SEMUA KE KERANJANG" \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-
-          echo ""
-          echo "========================================"
           echo "V8 SOURCE VALIDATION OK"
-          echo "========================================"
 
-
-      # ============================================================
-      # 9. VALIDATE KOTLIN BALANCE
-      # ============================================================
       - name: Validate Kotlin source balance
         shell: bash
         run: |
@@ -282,11 +184,9 @@ jobs:
           }
 
           def check(path):
-
               text = path.read_text(encoding="utf-8")
 
               stack = []
-
               i = 0
               line = 1
 
@@ -297,7 +197,6 @@ jobs:
               escaped = False
 
               while i < len(text):
-
                   c = text[i]
 
                   if c == '\n':
@@ -311,7 +210,6 @@ jobs:
                       continue
 
                   if block_comment:
-
                       if (
                           c == '*'
                           and i + 1 < len(text)
@@ -321,17 +219,13 @@ jobs:
                           i += 2
                       else:
                           i += 1
-
                       continue
 
                   if string:
-
                       if escaped:
                           escaped = False
-
                       elif c == '\\':
                           escaped = True
-
                       elif c == '"':
                           string = False
 
@@ -339,13 +233,10 @@ jobs:
                       continue
 
                   if char:
-
                       if escaped:
                           escaped = False
-
                       elif c == '\\':
                           escaped = True
-
                       elif c == "'":
                           char = False
 
@@ -384,7 +275,6 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
-
                       if (
                           not stack
                           or stack[-1][0] != reverse[c]
@@ -417,13 +307,8 @@ jobs:
           print(
               f"KOTLIN BALANCE OK: {len(files)} files"
           )
-
           PY
 
-
-      # ============================================================
-      # 10. CLEAN
-      # ============================================================
       - name: Clean project
         shell: bash
         run: |
@@ -435,10 +320,6 @@ jobs:
             --no-daemon \
             --stacktrace
 
-
-      # ============================================================
-      # 11. BUILD RELEASE APK
-      # ============================================================
       - name: Build release APK
         shell: bash
         run: |
@@ -451,10 +332,6 @@ jobs:
             --stacktrace \
             --warning-mode all
 
-
-      # ============================================================
-      # 12. VERIFY APK
-      # ============================================================
       - name: Verify APK
         shell: bash
         run: |
@@ -470,44 +347,29 @@ jobs:
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK tidak ditemukan."
-            find app/build/outputs -type f -print || true
             exit 1
           fi
 
           echo "APK ditemukan:"
           ls -lh "$APK"
 
-
-          # Android package check
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging "$APK" \
             | grep -q "package: name="
 
-
-          # Signature check
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
             --verbose \
             "$APK"
 
-
-          # Zip alignment check
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
             -c \
             -P 16 \
             -v 4 \
             "$APK"
 
-
-          echo ""
-          echo "========================================"
           echo "APK VERIFIED"
-          echo "========================================"
 
-
-      # ============================================================
-      # 13. RENAME + SHA256
-      # ============================================================
       - name: Rename APK and SHA256
         shell: bash
         run: |
@@ -521,30 +383,16 @@ jobs:
             -name "*.apk" \
             | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
-            exit 1
-          fi
-
           OUT="app/build/outputs/apk/release/ARS-POS-1.3.0-PHASE4.3.2.17-PRODUCT-IDENTITY-ENGINE-V8-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
           sha256sum "$OUT" > "$OUT.sha256"
 
-          echo ""
-          echo "========================================"
-          echo "FINAL APK"
-          echo "========================================"
-
           ls -lh \
             "$OUT" \
             "$OUT.sha256"
 
-
-      # ============================================================
-      # 14. UPLOAD ARTIFACT
-      # ============================================================
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
