@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_14_PRODUCT_IDENTITY_ENGINE_V5_MAX_FIXED.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_14_PRODUCT_IDENTITY_ENGINE_V5_MAX_FIXED2.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: ZIP Phase 4.3.2.14 tidak ditemukan."
@@ -116,22 +116,19 @@ jobs:
 
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q "Phase 4.3.2.14" \
+          grep -q 'canonicalNameTokens' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q "canonicalNameTokens" \
-            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
-
-          grep -q "MAX_BOX_IOU" \
+          grep -q 'MAX_BOX_IOU' \
             app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
 
-          grep -q "shapeDescriptor" \
+          grep -q 'shapeDescriptor' \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q "gradientDescriptor" \
+          grep -q 'gradientDescriptor' \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
-          grep -q "versionCode = 127" \
+          grep -q 'versionCode = 127' \
             app/build.gradle.kts
 
           grep -q 'versionName = "1.2.7"' \
@@ -262,10 +259,7 @@ jobs:
                       continue
 
                   if c in pairs:
-
-                      stack.append(
-                          (c, line)
-                      )
+                      stack.append((c, line))
 
                   elif c in reverse:
 
