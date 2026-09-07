@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.12 Product Identity Engine V3 - FIX
+    name: Build ARS POS Phase 4.3.2.12 Product Identity Engine V3 - CLEAN FIX2
     runs-on: ubuntu-latest
 
     steps:
@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_12_PRODUCT_IDENTITY_ENGINE_V3_FIX.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_12_PRODUCT_IDENTITY_ENGINE_V3_CLEAN_FIX2.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
@@ -174,6 +174,53 @@ jobs:
 
           echo "NO-BARCODE PRODUCT INPUT PATH OK"
 
+      - name: Validate MainActivity and PosViewModel API compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+          VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
+          REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
+          for FN in \
+            setPrimaryProductPhoto \
+            deleteProductPhoto \
+            stockIn \
+            saleItems \
+            processReturn \
+            profitSummary
+          do
+            grep -q "fun $FN" "$VM" || {
+              echo "MISSING VM API: $FN"
+              exit 1
+            }
+          done
+
+          for FN in \
+            setPrimaryProductPhoto \
+            deleteProductPhoto \
+            stockIn \
+            saleItems \
+            processReturn \
+            profitSummary
+          do
+            grep -q "fun $FN" "$REPO" || {
+              echo "MISSING REPOSITORY API: $FN"
+              exit 1
+            }
+          done
+
+          grep -q 'vm.setPrimaryProductPhoto' "$MAIN"
+          grep -q 'vm.deleteProductPhoto' "$MAIN"
+          grep -q 'vm.stockIn' "$MAIN"
+          grep -q 'vm.saleItems' "$MAIN"
+          grep -q 'vm.profitSummary' "$MAIN"
+
+          echo "MAINACTIVITY / POSVIEWMODEL API COMPATIBILITY OK"
+
       - name: Validate identity recognition engine
         shell: bash
         run: |
@@ -233,10 +280,10 @@ jobs:
           grep -q 'applicationId = "com.arspos.anglerriausyndicate"' \
             app/build.gradle.kts
 
-          grep -q 'versionCode = 123' \
+          grep -q 'versionCode = 124' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.2.3"' \
+          grep -q 'versionName = "1.2.4"' \
             app/build.gradle.kts
 
           grep -q 'signingConfig = signingConfigs.getByName("debug")' \
@@ -285,7 +332,24 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          gradle clean --no-daemon --stacktrace
+          gradle clean \
+            --no-daemon \
+            --stacktrace
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          grep -q 'versionCode = 124' \
+            app/build.gradle.kts
+
+          grep -q 'versionName = "1.2.4"' \
+            app/build.gradle.kts
+
+          echo "Release version 1.2.4 / 124 OK"
 
       - name: Build release APK
         shell: bash
@@ -343,7 +407,7 @@ jobs:
             -name '*.apk' \
             | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.2.3-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-FIX-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.2.4-PHASE4.3.2.12-CLEAN-FIX2-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -352,8 +416,8 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.2.3-PHASE4.3.2.12
+          name: ARS-POS-1.2.4-PHASE4.3.2.12-CLEAN-FIX2
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.3-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-FIX-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.3-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-FIX-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.4-PHASE4.3.2.12-CLEAN-FIX2-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.4-PHASE4.3.2.12-CLEAN-FIX2-SIGNED.apk.sha256
           if-no-files-found: error
