@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.9 Identity Engine V2
+    name: Build ARS POS Phase 4.3.2.10 Universal Product Identity
     runs-on: ubuntu-latest
 
     steps:
@@ -48,12 +48,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.9 ZIP
+      - name: Locate Phase 4.3.2.10 ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_9_IDENTITY_ENGINE_V2.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_10_UNIVERSAL_PRODUCT_IDENTITY.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
@@ -116,6 +116,8 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/MasterVerificationResult.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
@@ -124,13 +126,16 @@ jobs:
           )
 
           for FILE in "${REQUIRED[@]}"; do
-            test -f "$FILE" || { echo "MISSING: $FILE"; exit 1; }
+            test -f "$FILE" || {
+              echo "MISSING: $FILE"
+              exit 1
+            }
             echo "OK: $FILE"
           done
 
           echo "PROJECT STRUCTURE OK"
 
-      - name: Validate Phase 4.3.2.9 Identity Engine V2
+      - name: Validate Phase 4.3.2.10 Universal Product Identity
         shell: bash
         run: |
           set -euo pipefail
@@ -141,7 +146,7 @@ jobs:
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          grep -q "Phase 4.3.2.9" "$ENGINE"
+          grep -q "Phase 4.3.2.10" "$ENGINE"
           grep -q "ACCEPT_EXACT_BARCODE" "$ENGINE"
           grep -q "ACCEPT_STRONG_IDENTITY" "$ENGINE"
           grep -q "MIN_VISUAL_SUPPORT" "$ENGINE"
@@ -150,17 +155,26 @@ jobs:
           grep -q "extractModelTokens" "$ENGINE"
           grep -q "aggregateVisual" "$ENGINE"
           grep -q "MIN_MARGIN = 8" "$ENGINE"
+          grep -q "profileScore" "$ENGINE"
+          grep -q "identityProfiles" "$ENGINE"
+
+          grep -q "Barcode (opsional)" "$MAIN"
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfileCodec.kt
 
           grep -q "analyzeMultiOrientation" "$INPUT"
           grep -q "joinedForModel" "$INPUT"
           grep -q "SmartRecognitionEngine.recognize" "$REPO"
+          grep -q "loadIdentityProfiles" "$REPO"
+          grep -q "mergeProductIdentityProfile" "$REPO"
           grep -q "candidates = recognized.candidates" "$REPO"
           grep -q "TIDAK DIKENALI" "$MAIN"
 
-          grep -q "versionCode = 119" app/build.gradle.kts
-          grep -q 'versionName = "1.1.9"' app/build.gradle.kts
+          grep -q "versionCode = 120" app/build.gradle.kts
+          grep -q 'versionName = "1.2.0"' app/build.gradle.kts
 
-          echo "PHASE 4.3.2.9 SOURCE OK"
+          echo "PHASE 4.3.2.10 SOURCE OK"
 
       - name: Validate ML Kit and Camera
         shell: bash
@@ -227,31 +241,51 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)
+          APK=$(find app/build/outputs/apk/release \
+            -maxdepth 1 \
+            -type f \
+            -name '*.apk' | head -n 1)
+
           test -n "$APK"
 
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
+            verify --verbose "$APK"
 
-          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")
-          echo "$BADGING" | grep -q "name='com.arspos.anglerriausyndicate'"
-          echo "$BADGING" | grep -q "versionCode='119'"
-          echo "$BADGING" | grep -q "versionName='1.1.9'"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
+            -c -P 16 -v 4 "$APK"
 
-          FINAL="app/build/outputs/apk/release/ARS-POS-1.1.9-PHASE4.3.2.9-IDENTITY-ENGINE-V2-SIGNED.apk"
+          BADGING=$(
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" \
+            dump badging "$APK"
+          )
+
+          echo "$BADGING" | grep -q \
+            "name='com.arspos.anglerriausyndicate'"
+
+          echo "$BADGING" | grep -q \
+            "versionCode='120'"
+
+          echo "$BADGING" | grep -q \
+            "versionName='1.2.0'"
+
+          FINAL="app/build/outputs/apk/release/ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED.apk"
+
           cp "$APK" "$FINAL"
+
           sha256sum "$FINAL" > "$FINAL.sha256"
 
           echo "FINAL_APK=$FINAL" >> "$GITHUB_ENV"
+
           ls -lh "$FINAL" "$FINAL.sha256"
+
           cat "$FINAL.sha256"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-1.1.9-PHASE4.3.2.9-IDENTITY-ENGINE-V2-SIGNED
+          name: ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.9-PHASE4.3.2.9-IDENTITY-ENGINE-V2-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.1.9-PHASE4.3.2.9-IDENTITY-ENGINE-V2-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.0-PHASE4.3.2.10-UNIVERSAL-PRODUCT-IDENTITY-SIGNED.apk.sha256
           if-no-files-found: error
           retention-days: 30
