@@ -10,11 +10,10 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.14 Product Identity Engine V5
+    name: Build ARS POS Phase 4.3.2.15 Identity Engine V6
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v5
 
@@ -39,30 +38,27 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          test -d "$ANDROID_HOME/platforms/android-35"
-          test -d "$ANDROID_HOME/build-tools/35.0.0"
-
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.14 ZIP
+      - name: Locate Phase 4.3.2.15 ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_14_PRODUCT_IDENTITY_ENGINE_V5_MAX_FIXED2.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_15_PRODUCT_IDENTITY_ENGINE_V6.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP Phase 4.3.2.14 tidak ditemukan."
+            echo "ERROR: ZIP V6 tidak ditemukan."
             echo ""
             echo "ZIP yang tersedia:"
             find . -maxdepth 2 -type f -iname "*.zip" -print
             exit 1
           fi
 
-          echo "ZIP ditemukan:"
+          echo "ZIP V6 ditemukan:"
           ls -lh "$ZIP_FILE"
 
           unzip -t "$ZIP_FILE"
@@ -103,38 +99,57 @@ jobs:
           echo "Gradle project:"
           echo "$PROJECT_DIR"
 
-      - name: Validate V5 source files
+      - name: Validate V6 source files
         shell: bash
         run: |
           set -euo pipefail
 
           cd "$PROJECT_DIR"
 
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
+
           test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
 
           test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
 
-          test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+          test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
 
-          grep -q 'canonicalNameTokens' \
+          grep -q 'Phase 4.3.2.15' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q 'MAX_BOX_IOU' \
-            app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
+          grep -q 'masterVerified' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
 
-          grep -q 'shapeDescriptor' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+          grep -q 'IDENTITY-FIRST' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q 'gradientDescriptor' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+          grep -q 'MIN_TEXT_GATE' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
-          grep -q 'versionCode = 127' \
+          grep -q 'MIN_VISUAL_MARGIN' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
+
+          grep -q 'masterVerificationSettings' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
+
+          grep -q 'verifiedProductIds' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
+
+          grep -q 'versionCode = 128' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.2.7"' \
+          grep -q 'versionName = "1.2.8"' \
             app/build.gradle.kts
 
-          echo "V5 SOURCE OK"
+          echo "===================================="
+          echo "V6 SOURCE VALIDATION OK"
+          echo "===================================="
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -197,6 +212,7 @@ jobs:
                       ):
                           block_comment = False
                           i += 2
+
                       else:
                           i += 1
 
@@ -355,7 +371,7 @@ jobs:
             exit 1
           fi
 
-          echo "APK:"
+          echo "APK ditemukan:"
           echo "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
@@ -373,7 +389,9 @@ jobs:
             -v 4 \
             "$APK"
 
+          echo "===================================="
           echo "APK VERIFIED"
+          echo "===================================="
 
       - name: Rename APK and SHA256
         shell: bash
@@ -388,7 +406,7 @@ jobs:
             -name "*.apk" \
             | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.2.7-PHASE4.3.2.14-PRODUCT-IDENTITY-ENGINE-V5-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.2.8-PHASE4.3.2.15-PRODUCT-IDENTITY-ENGINE-V6-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -404,11 +422,11 @@ jobs:
         uses: actions/upload-artifact@v4
 
         with:
-          name: ARS-POS-1.2.7-PHASE4.3.2.14
+          name: ARS-POS-1.2.8-PHASE4.3.2.15-V6
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.7-PHASE4.3.2.14-PRODUCT-IDENTITY-ENGINE-V5-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.8-PHASE4.3.2.15-PRODUCT-IDENTITY-ENGINE-V6-SIGNED.apk
 
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.7-PHASE4.3.2.14-PRODUCT-IDENTITY-ENGINE-V5-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.8-PHASE4.3.2.15-PRODUCT-IDENTITY-ENGINE-V6-SIGNED.apk.sha256
 
           if-no-files-found: error
