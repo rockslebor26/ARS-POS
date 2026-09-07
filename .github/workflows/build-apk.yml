@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.15 Identity Engine V6
+    name: Build ARS POS Phase 4.3.2.16 Identity Engine V7
     runs-on: ubuntu-latest
 
     steps:
@@ -30,9 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           yes | sdkmanager --licenses >/dev/null || true
-
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -43,84 +41,60 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.15 ZIP
+      - name: Locate Phase 4.3.2.16 ZIP
         shell: bash
         run: |
           set -euo pipefail
-
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_15_PRODUCT_IDENTITY_ENGINE_V6.zip"
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP V6 tidak ditemukan."
-            echo ""
-            echo "ZIP yang tersedia:"
-            find . -maxdepth 2 -type f -iname "*.zip" -print
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_16_PRODUCT_IDENTITY_ENGINE_V7.zip"
+          test -f "$ZIP_FILE" || {
+            echo "ERROR: ZIP V7 tidak ditemukan"
+            find . -maxdepth 2 -type f -iname '*.zip' -print
             exit 1
-          fi
-
-          echo "ZIP V6 ditemukan:"
-          ls -lh "$ZIP_FILE"
+          }
 
           unzip -t "$ZIP_FILE"
-
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
       - name: Extract ARS POS project
         shell: bash
         run: |
           set -euo pipefail
-
           rm -rf extracted
           mkdir -p extracted
-
           unzip -o "$ZIP_FILE" -d extracted
-
-          echo "Project berhasil diekstrak."
 
       - name: Locate Gradle project
         shell: bash
         run: |
           set -euo pipefail
 
-          SETTINGS=$(find extracted \
-            -type f \
-            -name "settings.gradle.kts" \
-            | head -n 1)
+          SETTINGS=$(find extracted -type f -name settings.gradle.kts | head -n 1)
 
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle.kts tidak ditemukan."
+          test -n "$SETTINGS" || {
+            echo "ERROR: settings.gradle.kts tidak ditemukan"
             exit 1
-          fi
+          }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Gradle project: $PROJECT_DIR"
 
-          echo "Gradle project:"
-          echo "$PROJECT_DIR"
-
-      - name: Validate V6 source files
+      - name: Validate V7 source files
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/RecognitionCandidate.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
-
           test -f app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt
 
-          grep -q 'Phase 4.3.2.15' \
+          grep -q 'Phase 4.3.2.16' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
           grep -q 'masterVerified' \
@@ -135,54 +109,46 @@ jobs:
           grep -q 'MIN_VISUAL_MARGIN' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt
 
+          grep -q 'center82' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
+          grep -q 'center68' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
+          grep -q 'centerAgreement' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
+
           grep -q 'masterVerificationSettings' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDao.kt
 
           grep -q 'verifiedProductIds' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -q 'versionCode = 128' \
+          grep -q 'versionCode = 129' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.2.8"' \
+          grep -q 'versionName = "1.2.9"' \
             app/build.gradle.kts
 
-          echo "===================================="
-          echo "V6 SOURCE VALIDATION OK"
-          echo "===================================="
+          echo 'V7 SOURCE VALIDATION OK'
 
       - name: Validate Kotlin source balance
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           python3 - <<'PY'
           from pathlib import Path
 
-          pairs = {
-              "{": "}",
-              "(": ")",
-              "[": "]"
-          }
-
-          reverse = {
-              v: k
-              for k, v in pairs.items()
-          }
+          pairs = {'{': '}', '(': ')', '[': ']'}
+          reverse = {v: k for k, v in pairs.items()}
 
           def check(path):
-
-              text = path.read_text(
-                  encoding="utf-8"
-              )
-
+              text = path.read_text(encoding='utf-8')
               stack = []
-
               i = 0
               line = 1
-
               line_comment = False
               block_comment = False
               string = False
@@ -190,10 +156,9 @@ jobs:
               escaped = False
 
               while i < len(text):
-
                   c = text[i]
 
-                  if c == "\n":
+                  if c == '\n':
                       line += 1
                       line_comment = False
                       i += 1
@@ -204,62 +169,39 @@ jobs:
                       continue
 
                   if block_comment:
-
-                      if (
-                          c == "*"
-                          and i + 1 < len(text)
-                          and text[i + 1] == "/"
-                      ):
+                      if c == '*' and i + 1 < len(text) and text[i + 1] == '/':
                           block_comment = False
                           i += 2
-
                       else:
                           i += 1
-
                       continue
 
                   if string:
-
                       if escaped:
                           escaped = False
-
-                      elif c == "\\":
+                      elif c == '\\':
                           escaped = True
-
                       elif c == '"':
                           string = False
-
                       i += 1
                       continue
 
                   if char:
-
                       if escaped:
                           escaped = False
-
-                      elif c == "\\":
+                      elif c == '\\':
                           escaped = True
-
                       elif c == "'":
                           char = False
-
                       i += 1
                       continue
 
-                  if (
-                      c == "/"
-                      and i + 1 < len(text)
-                      and text[i + 1] == "/"
-                  ):
+                  if c == '/' and i + 1 < len(text) and text[i + 1] == '/':
                       line_comment = True
                       i += 2
                       continue
 
-                  if (
-                      c == "/"
-                      and i + 1 < len(text)
-                      and text[i + 1] == "*"
-                  ):
+                  if c == '/' and i + 1 < len(text) and text[i + 1] == '*':
                       block_comment = True
                       i += 2
                       continue
@@ -278,55 +220,29 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
-
-                      if (
-                          not stack
-                          or stack[-1][0] != reverse[c]
-                      ):
+                      if not stack or stack[-1][0] != reverse[c]:
                           raise SystemExit(
-                              f"Mismatch in {path}:{line}"
+                              f'Mismatch in {path}:{line}'
                           )
 
                       stack.pop()
 
                   i += 1
 
-              if string:
+              if string or char or block_comment or stack:
                   raise SystemExit(
-                      f"Unclosed string: {path}"
-                  )
-
-              if char:
-                  raise SystemExit(
-                      f"Unclosed char: {path}"
-                  )
-
-              if block_comment:
-                  raise SystemExit(
-                      f"Unclosed comment: {path}"
-                  )
-
-              if stack:
-                  raise SystemExit(
-                      f"Unbalanced Kotlin: {path}"
+                      f'Unbalanced Kotlin: {path}'
                   )
 
           files = list(
-              Path(
-                  "app/src/main/java"
-              ).rglob("*.kt")
+              Path('app/src/main/java').rglob('*.kt')
           )
-
-          if not files:
-              raise SystemExit(
-                  "Tidak ada Kotlin source."
-              )
 
           for path in files:
               check(path)
 
           print(
-              f"KOTLIN BALANCE OK: {len(files)} files"
+              f'KOTLIN BALANCE OK: {len(files)} files'
           )
           PY
 
@@ -334,7 +250,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle clean \
@@ -345,7 +260,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -357,76 +271,58 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
             app/build/outputs/apk/release \
             -type f \
-            -name "*.apk" \
+            -name '*.apk' \
             | head -n 1)
 
-          if [ -z "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan."
+          test -n "$APK" || {
+            echo 'ERROR: APK tidak ditemukan'
             exit 1
-          fi
-
-          echo "APK ditemukan:"
-          echo "$APK"
+          }
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging "$APK" \
-            | grep -q "package: name="
+            | grep -q 'package: name='
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
-            verify \
-            --verbose \
-            "$APK"
+            verify --verbose "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -c \
-            -P 16 \
-            -v 4 \
-            "$APK"
+            -c -P 16 -v 4 "$APK"
 
-          echo "===================================="
-          echo "APK VERIFIED"
-          echo "===================================="
+          echo 'APK VERIFIED'
 
       - name: Rename APK and SHA256
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
             app/build/outputs/apk/release \
             -type f \
-            -name "*.apk" \
+            -name '*.apk' \
             | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.2.8-PHASE4.3.2.15-PRODUCT-IDENTITY-ENGINE-V6-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.2.9-PHASE4.3.2.16-PRODUCT-IDENTITY-ENGINE-V7-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
-          sha256sum "$OUT" \
-            > "$OUT.sha256"
+          sha256sum "$OUT" > "$OUT.sha256"
 
-          echo "FINAL APK:"
-          ls -lh \
-            "$OUT" \
-            "$OUT.sha256"
+          ls -lh "$OUT" "$OUT.sha256"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
-
         with:
-          name: ARS-POS-1.2.8-PHASE4.3.2.15-V6
+          name: ARS-POS-1.2.9-PHASE4.3.2.16-V7
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.8-PHASE4.3.2.15-PRODUCT-IDENTITY-ENGINE-V6-SIGNED.apk
-
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.8-PHASE4.3.2.15-PRODUCT-IDENTITY-ENGINE-V6-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.9-PHASE4.3.2.16-PRODUCT-IDENTITY-ENGINE-V7-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.9-PHASE4.3.2.16-PRODUCT-IDENTITY-ENGINE-V7-SIGNED.apk.sha256
 
           if-no-files-found: error
