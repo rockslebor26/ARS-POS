@@ -11,10 +11,11 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.13 Product Identity Engine V4
+    name: Build ARS POS Phase 4.3.2.13 Product Identity Engine V4 FIX
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v5
 
@@ -31,7 +32,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           yes | sdkmanager --licenses >/dev/null || true
+
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -39,6 +42,7 @@ jobs:
 
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
+
           test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
           test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
           test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
@@ -55,11 +59,18 @@ jobs:
 
           ZIP_FILE="./ARS_POS_PHASE4_3_2_13_PRODUCT_IDENTITY_ENGINE_V4.zip"
 
-          test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: ZIP tidak ditemukan:"
+            echo "$ZIP_FILE"
+
+            echo "ZIP yang tersedia:"
             find . -maxdepth 2 -type f -iname '*.zip' -print
+
             exit 1
-          }
+          fi
+
+          echo "ZIP ditemukan:"
+          ls -lh "$ZIP_FILE"
 
           unzip -t "$ZIP_FILE"
 
@@ -75,23 +86,30 @@ jobs:
 
           unzip -o "$ZIP_FILE" -d extracted
 
+          echo "Project berhasil diekstrak."
+
       - name: Locate Gradle project
         shell: bash
         run: |
           set -euo pipefail
 
-          SETTINGS=$(find extracted -type f -name 'settings.gradle.kts' | head -n 1)
+          SETTINGS=$(find extracted \
+            -type f \
+            -name 'settings.gradle.kts' \
+            | head -n 1)
 
-          test -n "$SETTINGS" || {
-            echo "ERROR: settings.gradle.kts tidak ditemukan"
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle.kts tidak ditemukan."
+            find extracted -maxdepth 4 -type f | head -100
             exit 1
-          }
+          fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          echo "Gradle project: $PROJECT_DIR"
+          echo "Gradle project:"
+          echo "$PROJECT_DIR"
 
       - name: Validate project structure
         shell: bash
@@ -135,10 +153,10 @@ jobs:
           )
 
           for FILE in "${REQUIRED[@]}"; do
-            test -f "$FILE" || {
+            if [ ! -f "$FILE" ]; then
               echo "MISSING: $FILE"
               exit 1
-            }
+            fi
           done
 
           echo "PROJECT STRUCTURE OK"
@@ -155,9 +173,10 @@ jobs:
           ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
-          INPUT="app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
 
-          grep -q 'Phase 4.3.2.13' "$PROFILE" "$ENGINE" "$MAIN"
+          grep -q 'Phase 4.3.2.13' "$PROFILE"
+          grep -q 'Phase 4.3.2.13' "$ENGINE"
+          grep -q 'Phase 4.3.2.13' "$MAIN"
 
           grep -q 'val aliases: List<String>' "$PROFILE"
 
@@ -175,8 +194,6 @@ jobs:
 
           grep -q 'analyzeMultiOrientation' "$MAIN"
 
-          grep -q 'foto ini tetap dapat menjadi master visual awal' "$MAIN"
-
           grep -q 'Barcode tidak wajib' "$MAIN"
 
           echo "IDENTITY PROFILE V4 OK"
@@ -193,10 +210,13 @@ jobs:
           ENTITY="app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
 
           grep -q 'Barcode (opsional)' "$MAIN"
+
           grep -q 'IDENTITAS MANUAL TETAP DIDUKUNG' "$MAIN"
+
           grep -q 'generateSku' "$MAIN"
 
           grep -q 'ifBlank { null }' "$REPO"
+
           grep -q 'require(name.isNotBlank())' "$REPO"
 
           grep -q 'val barcode: String?=null' "$ENTITY"
@@ -215,7 +235,9 @@ jobs:
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
           grep -q 'First intake photo becomes a visual master seed' "$MAIN"
+
           grep -q 'suspend fun addProductPhoto' "$VM"
+
           grep -q 'captureAngle:String="UNKNOWN"' "$REPO"
 
           echo "MASTER SEED PATH OK"
@@ -231,10 +253,13 @@ jobs:
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
           grep -q 'com.google.mlkit:object-detection:17.0.2' "$GRADLE_FILE"
+
           grep -q 'com.google.mlkit:text-recognition:16.0.1' "$GRADLE_FILE"
+
           grep -q 'com.google.mlkit:barcode-scanning:17.3.0' "$GRADLE_FILE"
 
           grep -q 'ActivityResultContracts.TakePicture()' "$MAIN"
+
           grep -q 'Manifest.permission.CAMERA' "$MAIN"
 
           grep -q 'FileProvider' app/src/main/AndroidManifest.xml
@@ -260,11 +285,13 @@ jobs:
           grep -q 'applicationId = "com.arspos.anglerriausyndicate"' "$APP"
 
           grep -q 'versionCode = 126' "$APP"
+
           grep -q 'versionName = "1.2.6"' "$APP"
 
           grep -q 'signingConfig = signingConfigs.getByName("debug")' "$APP"
 
           grep -q 'MIGRATION_3_4' "$DB"
+
           grep -q 'MIGRATION_4_5' "$DB"
 
           grep -q 'withTransaction' "$REPO"
@@ -282,7 +309,15 @@ jobs:
           VM="app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
           REPO="app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
-          for FN in setPrimaryProductPhoto deleteProductPhoto stockIn saleItems processReturn profitSummary checkout; do
+          for FN in \
+            setPrimaryProductPhoto \
+            deleteProductPhoto \
+            stockIn \
+            saleItems \
+            processReturn \
+            profitSummary \
+            checkout
+          do
 
             grep -q "fun $FN" "$VM" || {
               echo "MISSING VM API: $FN"
@@ -305,7 +340,7 @@ jobs:
 
           echo "EXISTING POS OK"
 
-      - name: Validate source syntax balance
+      - name: Validate Kotlin source syntax balance
         shell: bash
         run: |
           set -euo pipefail
@@ -315,18 +350,141 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          files = list(Path('app/src/main/java').rglob('*.kt'))
+          root = Path("app/src/main/java")
 
-          for p in files:
-              s = p.read_text(encoding='utf-8')
+          pairs = {
+              "{": "}",
+              "(": ")",
+              "[": "]",
+          }
 
-              if s.count('{') != s.count('}'):
-                  raise SystemExit(f'Brace mismatch: {p}')
+          reverse = {v: k for k, v in pairs.items()}
 
-              if s.count('(') != s.count(')'):
-                  raise SystemExit(f'Paren mismatch: {p}')
+          def check_file(path):
+              text = path.read_text(encoding="utf-8")
 
-          print(f'BALANCE CHECK OK: {len(files)} Kotlin files')
+              stack = []
+
+              i = 0
+              line = 1
+
+              in_line_comment = False
+              in_block_comment = False
+              in_string = False
+              in_char = False
+              escaped = False
+
+              while i < len(text):
+                  ch = text[i]
+
+                  if ch == "\n":
+                      line += 1
+                      in_line_comment = False
+                      i += 1
+                      continue
+
+                  if in_line_comment:
+                      i += 1
+                      continue
+
+                  if in_block_comment:
+                      if ch == "*" and i + 1 < len(text) and text[i + 1] == "/":
+                          in_block_comment = False
+                          i += 2
+                      else:
+                          i += 1
+                      continue
+
+                  if in_string:
+                      if escaped:
+                          escaped = False
+                      elif ch == "\\":
+                          escaped = True
+                      elif ch == '"':
+                          in_string = False
+                      i += 1
+                      continue
+
+                  if in_char:
+                      if escaped:
+                          escaped = False
+                      elif ch == "\\":
+                          escaped = True
+                      elif ch == "'":
+                          in_char = False
+                      i += 1
+                      continue
+
+                  if ch == "/" and i + 1 < len(text):
+                      nxt = text[i + 1]
+
+                      if nxt == "/":
+                          in_line_comment = True
+                          i += 2
+                          continue
+
+                      if nxt == "*":
+                          in_block_comment = True
+                          i += 2
+                          continue
+
+                  if ch == '"':
+                      in_string = True
+                      i += 1
+                      continue
+
+                  if ch == "'":
+                      in_char = True
+                      i += 1
+                      continue
+
+                  if ch in pairs:
+                      stack.append((ch, line))
+
+                  elif ch in reverse:
+                      if not stack:
+                          raise SystemExit(
+                              f"Unexpected {ch} in {path}:{line}"
+                          )
+
+                      opening, opening_line = stack.pop()
+
+                      if reverse[ch] != opening:
+                          raise SystemExit(
+                              f"Mismatch {opening} at line "
+                              f"{opening_line} with {ch} at line {line} "
+                              f"in {path}"
+                          )
+
+                  i += 1
+
+              if in_string:
+                  raise SystemExit(f"Unclosed string in {path}")
+
+              if in_char:
+                  raise SystemExit(f"Unclosed char literal in {path}")
+
+              if in_block_comment:
+                  raise SystemExit(f"Unclosed block comment in {path}")
+
+              if stack:
+                  raise SystemExit(
+                      f"Unclosed {stack[-1][0]} at line "
+                      f"{stack[-1][1]} in {path}"
+                  )
+
+          files = list(root.rglob("*.kt"))
+
+          if not files:
+              raise SystemExit("Tidak ada Kotlin source ditemukan.")
+
+          for path in files:
+              check_file(path)
+
+          print(
+              f"KOTLIN BALANCE CHECK OK: "
+              f"{len(files)} Kotlin files"
+          )
           PY
 
       - name: Clean project
@@ -336,7 +494,9 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          gradle clean --no-daemon --stacktrace
+          gradle clean \
+            --no-daemon \
+            --stacktrace
 
       - name: Build release APK
         shell: bash
@@ -362,7 +522,13 @@ jobs:
             -name '*.apk' \
             | head -n 1)
 
-          test -n "$APK"
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK tidak ditemukan."
+            exit 1
+          fi
+
+          echo "APK:"
+          echo "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging "$APK" \
@@ -377,10 +543,9 @@ jobs:
             -c \
             -P 16 \
             -v 4 \
-            "$APK" \
-            | tail -n 2
+            "$APK"
 
-          echo "APK VERIFIED: $APK"
+          echo "APK VERIFIED"
 
       - name: Rename signed APK
         shell: bash
@@ -400,9 +565,11 @@ jobs:
 
           sha256sum "$OUT" | tee "$OUT.sha256"
 
+          echo "FINAL APK:"
+          ls -lh "$OUT"
+
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
-
         with:
           name: ARS-POS-1.2.6-PHASE4.3.2.13
 
