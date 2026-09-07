@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.12 Product Identity Engine V3
+    name: Build ARS POS Phase 4.3.2.12 Product Identity Engine V3 - FIX
     runs-on: ubuntu-latest
 
     steps:
@@ -36,6 +36,7 @@ jobs:
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
+
           test -d "$ANDROID_HOME/platforms/android-35"
           test -d "$ANDROID_HOME/build-tools/35.0.0"
           test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
@@ -51,7 +52,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_12_PRODUCT_IDENTITY_ENGINE_V3.zip"
+
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_12_PRODUCT_IDENTITY_ENGINE_V3_FIX.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: ZIP tidak ditemukan: $ZIP_FILE"
@@ -60,14 +62,17 @@ jobs:
           fi
 
           unzip -t "$ZIP_FILE"
+
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
       - name: Extract ARS POS project
         shell: bash
         run: |
           set -euo pipefail
+
           rm -rf extracted
           mkdir -p extracted
+
           unzip -o "$ZIP_FILE" -d extracted
 
       - name: Locate Gradle project
@@ -85,12 +90,14 @@ jobs:
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
           echo "Gradle project: $PROJECT_DIR"
 
       - name: Validate project structure
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           REQUIRED=(
@@ -137,6 +144,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
@@ -170,6 +178,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           ENGINE="app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
@@ -193,6 +202,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           GRADLE_FILE="app/build.gradle.kts"
@@ -217,12 +227,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
-          grep -q 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
-          grep -q 'versionCode = 122' app/build.gradle.kts
-          grep -q 'versionName = "1.2.2"' app/build.gradle.kts
-          grep -q 'signingConfig = signingConfigs.getByName("debug")' app/build.gradle.kts
+          grep -q 'applicationId = "com.arspos.anglerriausyndicate"' \
+            app/build.gradle.kts
+
+          grep -q 'versionCode = 123' \
+            app/build.gradle.kts
+
+          grep -q 'versionName = "1.2.3"' \
+            app/build.gradle.kts
+
+          grep -q 'signingConfig = signingConfigs.getByName("debug")' \
+            app/build.gradle.kts
 
           grep -q 'withTransaction' \
             app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
@@ -239,6 +257,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           MAIN="app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
@@ -251,8 +270,10 @@ jobs:
           grep -q 'DEBIT' "$MAIN"
           grep -q 'processingPayment' "$MAIN"
           grep -q 'formatRupiah' "$MAIN"
+
           grep -q 'withTransaction' "$REPO"
           grep -q 'changeStock' "$REPO"
+
           grep -q 'Locale("id", "ID")' "$MONEY"
 
           echo "EXISTING POS OK"
@@ -261,13 +282,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
+
           gradle clean --no-daemon --stacktrace
 
       - name: Build release APK
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -279,21 +303,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK=$(find app/build/outputs/apk/release \
-            -type f -name '*.apk' | head -n 1)
+            -type f \
+            -name '*.apk' \
+            | head -n 1)
 
           test -n "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging "$APK" | grep -q 'package: name='
+            dump badging "$APK" \
+            | grep -q 'package: name='
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
-            verify --verbose "$APK"
+            verify \
+            --verbose \
+            "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -c -P 16 -v 4 "$APK" | tail -n 2
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK" \
+            | tail -n 2
 
           echo "APK VERIFIED: $APK"
 
@@ -301,12 +335,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK=$(find app/build/outputs/apk/release \
-            -type f -name '*.apk' | head -n 1)
+            -type f \
+            -name '*.apk' \
+            | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.2.2-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.2.3-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-FIX-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -315,8 +352,8 @@ jobs:
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.2.2-PHASE4.3.2.12
+          name: ARS-POS-1.2.3-PHASE4.3.2.12
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.2-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.2-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.3-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-FIX-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.2.3-PHASE4.3.2.12-PRODUCT-IDENTITY-ENGINE-V3-FIX-SIGNED.apk.sha256
           if-no-files-found: error
