@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.21 Fullscreen Target Camera V8.4
+    name: Build ARS POS Phase 4.3.2.21 Fullscreen Target Camera V8.4.1
     runs-on: ubuntu-latest
 
     steps:
@@ -30,9 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           yes | sdkmanager --licenses >/dev/null || true
-
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -43,21 +41,19 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.21 V8.4 source ZIP
+      - name: Locate Phase 4.3.2.21 V8.4.1 source ZIP
         shell: bash
         run: |
           set -euo pipefail
-
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_21_V8_4_FULLSCREEN_TARGET_CAMERA.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_21_V8_4_1_FULLSCREEN_TARGET_CAMERA.zip"
 
           test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V8.4 tidak ditemukan: $ZIP_FILE"
+            echo "ERROR: ZIP V8.4.1 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           }
 
           unzip -t "$ZIP_FILE"
-
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
       - name: Extract ARS POS project
@@ -85,14 +81,12 @@ jobs:
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4 source files
+      - name: Validate V8.4.1 source files
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           REQUIRED=(
@@ -100,7 +94,6 @@ jobs:
             "build.gradle.kts"
             "gradle.properties"
             "app/build.gradle.kts"
-
             "app/src/main/AndroidManifest.xml"
             "app/src/main/res/xml/file_paths.xml"
 
@@ -108,7 +101,6 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt"
-
             "app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
@@ -134,16 +126,19 @@ jobs:
             }
           done
 
-          grep -q 'versionCode = 134' \
-            app/build.gradle.kts
-
-          grep -q 'versionName = "1.3.4"' \
-            app/build.gradle.kts
+          grep -q 'versionCode = 135' app/build.gradle.kts
+          grep -q 'versionName = "1.3.5"' app/build.gradle.kts
 
           grep -q 'FullscreenMasterCamera' \
             app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
 
           grep -q 'DialogProperties' \
+            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+
+          grep -q 'import androidx.compose.ui.window.DialogProperties' \
+            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+
+          ! grep -q 'import androidx.compose.material3.DialogProperties' \
             app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
 
           grep -q 'usePlatformDefaultWidth = false' \
@@ -176,16 +171,12 @@ jobs:
           grep -q 'TAMBAH SEMUA KE KERANJANG' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          echo ""
-          echo "========================================"
-          echo "V8.4 SOURCE VALIDATION OK"
-          echo "========================================"
+          echo 'V8.4.1 SOURCE VALIDATION OK'
 
       - name: Validate Kotlin source balance
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           python3 - <<'PY'
@@ -197,9 +188,7 @@ jobs:
               '[': ']'
           }
 
-          reverse = {
-              v: k for k, v in pairs.items()
-          }
+          reverse = {v: k for k, v in pairs.items()}
 
           def check(path):
               text = path.read_text(encoding='utf-8')
@@ -215,7 +204,6 @@ jobs:
               escaped = False
 
               while i < len(text):
-
                   c = text[i]
 
                   if c == '\n':
@@ -229,7 +217,6 @@ jobs:
                       continue
 
                   if block_comment:
-
                       if (
                           c == '*'
                           and i + 1 < len(text)
@@ -239,17 +226,13 @@ jobs:
                           i += 2
                       else:
                           i += 1
-
                       continue
 
                   if string:
-
                       if escaped:
                           escaped = False
-
                       elif c == '\\':
                           escaped = True
-
                       elif c == '"':
                           string = False
 
@@ -257,13 +240,10 @@ jobs:
                       continue
 
                   if char:
-
                       if escaped:
                           escaped = False
-
                       elif c == '\\':
                           escaped = True
-
                       elif c == "'":
                           char = False
 
@@ -302,13 +282,12 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
-
                       if (
                           not stack
                           or stack[-1][0] != reverse[c]
                       ):
                           raise SystemExit(
-                              f"Mismatch in {path}:{line}"
+                              f'Mismatch in {path}:{line}'
                           )
 
                       stack.pop()
@@ -322,7 +301,7 @@ jobs:
                   or stack
               ):
                   raise SystemExit(
-                      f"Unbalanced Kotlin: {path}"
+                      f'Unbalanced Kotlin: {path}'
                   )
 
           files = list(
@@ -333,7 +312,7 @@ jobs:
               check(path)
 
           print(
-              f"KOTLIN BALANCE OK: {len(files)} files"
+              f'KOTLIN BALANCE OK: {len(files)} files'
           )
           PY
 
@@ -341,7 +320,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle clean \
@@ -352,7 +330,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -364,7 +341,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -374,12 +350,9 @@ jobs:
             | head -n 1)
 
           test -n "$APK" || {
-            echo "ERROR: APK tidak ditemukan"
+            echo 'ERROR: APK tidak ditemukan'
             exit 1
           }
-
-          echo "APK ditemukan:"
-          ls -lh "$APK"
 
           "$ANDROID_HOME/build-tools/35.0.0/aapt" \
             dump badging "$APK" \
@@ -396,16 +369,12 @@ jobs:
             -v 4 \
             "$APK"
 
-          echo ""
-          echo "========================================"
-          echo "APK VERIFIED"
-          echo "========================================"
+          echo 'APK VERIFIED'
 
       - name: Rename APK and SHA256
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -414,9 +383,7 @@ jobs:
             -name '*.apk' \
             | head -n 1)
 
-          test -n "$APK"
-
-          OUT="app/build/outputs/apk/release/ARS-POS-1.3.4-PHASE4.3.2.21-V8.4-FULLSCREEN-TARGET-CAMERA-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1-FULLSCREEN-TARGET-CAMERA-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -430,10 +397,10 @@ jobs:
         uses: actions/upload-artifact@v4
 
         with:
-          name: ARS-POS-1.3.4-PHASE4.3.2.21-V8.4
+          name: ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.4-PHASE4.3.2.21-V8.4-FULLSCREEN-TARGET-CAMERA-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.4-PHASE4.3.2.21-V8.4-FULLSCREEN-TARGET-CAMERA-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1-FULLSCREEN-TARGET-CAMERA-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1-FULLSCREEN-TARGET-CAMERA-SIGNED.apk.sha256
 
           if-no-files-found: error
