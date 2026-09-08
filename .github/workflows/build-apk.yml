@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.21 Fullscreen Target Camera V8.4.1
+    name: Build ARS POS Phase 4.3.2.21 Fullscreen Target Camera V8.4.1 FIX1
     runs-on: ubuntu-latest
 
     steps:
@@ -36,24 +36,32 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -d "$ANDROID_HOME/build-tools/35.0.0"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.21 V8.4.1 source ZIP
+      - name: Locate Phase 4.3.2.21 V8.4.1 FIX1 source ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_21_V8_4_1_FULLSCREEN_TARGET_CAMERA.zip"
 
-          test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V8.4.1 tidak ditemukan: $ZIP_FILE"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_21_V8_4_1_FULLSCREEN_TARGET_CAMERA_FIX1.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: ZIP V8.4.1 FIX1 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
-          }
+          fi
 
           unzip -t "$ZIP_FILE"
+
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
       - name: Extract ARS POS project
@@ -83,10 +91,11 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.1 source files
+      - name: Validate V8.4.1 FIX1 source files
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           REQUIRED=(
@@ -99,12 +108,14 @@ jobs:
 
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt"
 
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
@@ -126,57 +137,49 @@ jobs:
             }
           done
 
-          grep -q 'versionCode = 135' app/build.gradle.kts
-          grep -q 'versionName = "1.3.5"' app/build.gradle.kts
+          grep -q 'versionCode = 136' app/build.gradle.kts
+          grep -q 'versionName = "1.3.6"' app/build.gradle.kts
 
-          grep -q 'FullscreenMasterCamera' \
-            app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          CAMERA=app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
 
-          grep -q 'DialogProperties' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Dialog wajib menggunakan Compose UI Window
+          grep -q 'import androidx.compose.ui.window.Dialog' "$CAMERA"
+          grep -q 'import androidx.compose.ui.window.DialogProperties' "$CAMERA"
 
-          grep -q 'import androidx.compose.ui.window.DialogProperties' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Pastikan import Dialog yang salah tidak ada
+          ! grep -q 'import androidx.compose.material3.Dialog' "$CAMERA"
 
-          ! grep -q 'import androidx.compose.material3.DialogProperties' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Fullscreen
+          grep -q 'usePlatformDefaultWidth = false' "$CAMERA"
+          grep -q 'decorFitsSystemWindows = false' "$CAMERA"
 
-          grep -q 'usePlatformDefaultWidth = false' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Kamera foto
+          grep -q 'ImageCapture' "$CAMERA"
 
-          grep -q 'decorFitsSystemWindows = false' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Kamera video
+          grep -q 'VideoCapture' "$CAMERA"
 
-          grep -q 'LOCK TARGET' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Lock Target Object
+          grep -q 'LOCK TARGET' "$CAMERA"
+          grep -q 'TARGET TERKUNCI' "$CAMERA"
 
-          grep -q 'TARGET TERKUNCI' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Torch / flash
+          grep -q 'toggleTorch' "$CAMERA"
 
-          grep -q 'toggleTorch' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          # Switch kamera
+          grep -q 'switchLens' "$CAMERA"
 
-          grep -q 'switchLens' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
-
-          grep -q 'ImageCapture' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
-
-          grep -q 'VideoCapture' \
-            app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
-
-          grep -q 'Phase 4.3.2.21' \
-            PHASE4_3_2_21_V8_4_FULLSCREEN_TARGET_CAMERA.md
-
+          # Smart Shopping Scan
           grep -q 'TAMBAH SEMUA KE KERANJANG' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          echo 'V8.4.1 SOURCE VALIDATION OK'
+          echo "V8.4.1 FIX1 SOURCE VALIDATION OK"
 
       - name: Validate Kotlin source balance
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           python3 - <<'PY'
@@ -188,7 +191,9 @@ jobs:
               '[': ']'
           }
 
-          reverse = {v: k for k, v in pairs.items()}
+          reverse = {
+              v: k for k, v in pairs.items()
+          }
 
           def check(path):
               text = path.read_text(encoding='utf-8')
@@ -204,6 +209,7 @@ jobs:
               escaped = False
 
               while i < len(text):
+
                   c = text[i]
 
                   if c == '\n':
@@ -282,26 +288,18 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
-                      if (
-                          not stack
-                          or stack[-1][0] != reverse[c]
-                      ):
+                      if not stack or stack[-1][0] != reverse[c]:
                           raise SystemExit(
-                              f'Mismatch in {path}:{line}'
+                              f"Mismatch in {path}:{line}"
                           )
 
                       stack.pop()
 
                   i += 1
 
-              if (
-                  string
-                  or char
-                  or block_comment
-                  or stack
-              ):
+              if string or char or block_comment or stack:
                   raise SystemExit(
-                      f'Unbalanced Kotlin: {path}'
+                      f"Unbalanced Kotlin: {path}"
                   )
 
           files = list(
@@ -312,7 +310,7 @@ jobs:
               check(path)
 
           print(
-              f'KOTLIN BALANCE OK: {len(files)} files'
+              f"KOTLIN BALANCE OK: {len(files)} files"
           )
           PY
 
@@ -320,6 +318,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle clean \
@@ -330,6 +329,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -341,16 +341,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
-          APK=$(find \
-            app/build/outputs/apk/release \
+          APK=$(find app/build/outputs/apk/release \
             -type f \
             -name '*.apk' \
             | head -n 1)
 
           test -n "$APK" || {
-            echo 'ERROR: APK tidak ditemukan'
+            echo "ERROR: APK tidak ditemukan"
             exit 1
           }
 
@@ -369,21 +369,23 @@ jobs:
             -v 4 \
             "$APK"
 
-          echo 'APK VERIFIED'
+          echo "APK VERIFIED: $APK"
 
       - name: Rename APK and SHA256
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
-          APK=$(find \
-            app/build/outputs/apk/release \
+          APK=$(find app/build/outputs/apk/release \
             -type f \
             -name '*.apk' \
             | head -n 1)
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1-FULLSCREEN-TARGET-CAMERA-SIGNED.apk"
+          test -n "$APK"
+
+          OUT="app/build/outputs/apk/release/ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -397,10 +399,10 @@ jobs:
         uses: actions/upload-artifact@v4
 
         with:
-          name: ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1
+          name: ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1-FULLSCREEN-TARGET-CAMERA-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.5-PHASE4.3.2.21-V8.4.1-FULLSCREEN-TARGET-CAMERA-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1-SIGNED.apk.sha256
 
           if-no-files-found: error
