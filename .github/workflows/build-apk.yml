@@ -1,4 +1,4 @@
-name: ARS POS Release
+name: ARS POS Official Release
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.24 V8.4.4 FIX1
+    name: Build ARS POS Phase 4.3.2.26 V8.4.6 Official Update Channel
     runs-on: ubuntu-latest
 
     steps:
@@ -31,7 +31,6 @@ jobs:
         run: |
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
-
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -48,15 +47,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.4 source ZIP
+      - name: Locate V8.4.6 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_24_V8_4_4_CRASH_SHIELD_FLIGHT_RECORDER.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_26_V8_4_6_OFFICIAL_UPDATE_CHANNEL.zip"
 
           test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V8.4.4 tidak ditemukan: $ZIP_FILE"
+            echo "ERROR: ZIP V8.4.6 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           }
@@ -64,7 +63,7 @@ jobs:
           unzip -t "$ZIP_FILE"
 
           unzip -l "$ZIP_FILE" | grep -q \
-            'app/src/main/java/com/arspos/anglerriausyndicate/data/ProductIdentityProfile.kt'
+            'app/src/main/java/com/arspos/anglerriausyndicate/ArsUpdateChannel.kt'
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
@@ -75,7 +74,6 @@ jobs:
 
           rm -rf extracted
           mkdir -p extracted
-
           unzip -o "$ZIP_FILE" -d extracted
 
       - name: Locate Gradle project
@@ -95,7 +93,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.4 source files
+      - name: Validate V8.4.6 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -109,7 +107,6 @@ jobs:
             "build.gradle.kts"
             "gradle.properties"
             "app/build.gradle.kts"
-
             "app/src/main/AndroidManifest.xml"
             "app/src/main/res/xml/file_paths.xml"
 
@@ -117,6 +114,7 @@ jobs:
             "$PKG/PosViewModel.kt"
             "$PKG/ArsFlightRecorder.kt"
             "$PKG/ArsDevCenter.kt"
+            "$PKG/ArsUpdateChannel.kt"
             "$PKG/BitmapSafety.kt"
             "$PKG/ProductMasterStudio.kt"
             "$PKG/FullscreenMasterCamera.kt"
@@ -125,6 +123,7 @@ jobs:
             "$PKG/LongObjectAnalyzer.kt"
             "$PKG/ProductVisualMatcher.kt"
             "$PKG/VisualScanObject.kt"
+            "$PKG/ScanResultAggregator.kt"
 
             "$PKG/data/ProductionRepository.kt"
             "$PKG/data/SmartRecognitionEngine.kt"
@@ -138,82 +137,85 @@ jobs:
             "$PKG/data/db/ProductEntity.kt"
             "$PKG/data/db/ProductPhotoEntity.kt"
 
-            "PHASE4_3_2_24_V8_4_4_CRASH_SHIELD_FLIGHT_RECORDER.md"
+            "PHASE4_3_2_26_V8_4_6_OFFICIAL_UPDATE_CHANNEL.md"
+            "ARS_OFFICIAL_RELEASE_SETUP.md"
+            "PROJECT_CONTINUITY.md"
           )
 
           for FILE in "${REQUIRED[@]}"; do
             if [ ! -f "$FILE" ]; then
               echo "MISSING: $FILE"
-
-              echo ""
-              echo "ISI PACKAGE DIRECTORY:"
               find "$PKG" -maxdepth 3 -type f | sort || true
-
               exit 1
             fi
           done
 
-          grep -q 'versionCode = 139' \
+          grep -q 'applicationId = "com.arspos.anglerriausyndicate"' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.3.9"' \
+          grep -q 'versionCode = 141' \
+            app/build.gradle.kts
+
+          grep -q 'versionName = "1.4.1"' \
+            app/build.gradle.kts
+
+          grep -q 'create("arsOfficialRelease")' \
+            app/build.gradle.kts
+
+          grep -q 'ARS_RELEASE_STORE_FILE' \
+            app/build.gradle.kts
+
+          grep -q 'ARS_RELEASE_STORE_PASSWORD' \
+            app/build.gradle.kts
+
+          grep -q 'ARS_RELEASE_KEY_ALIAS' \
+            app/build.gradle.kts
+
+          grep -q 'ARS_RELEASE_KEY_PASSWORD' \
+            app/build.gradle.kts
+
+          ! grep -q 'signingConfig = signingConfigs.getByName("debug")' \
             app/build.gradle.kts
 
           MAIN="$PKG/MainActivity.kt"
-          VM="$PKG/PosViewModel.kt"
-          REPO="$PKG/data/ProductionRepository.kt"
-          MATCHER="$PKG/ProductVisualMatcher.kt"
           FLIGHT="$PKG/ArsFlightRecorder.kt"
           DEV="$PKG/ArsDevCenter.kt"
-          BITMAP="$PKG/BitmapSafety.kt"
+          UPDATE="$PKG/ArsUpdateChannel.kt"
+          REPO="$PKG/data/ProductionRepository.kt"
+          MATCHER="$PKG/ProductVisualMatcher.kt"
+          SCANNER="$PKG/SmartVisualScanner.kt"
+          AGG="$PKG/ScanResultAggregator.kt"
 
+          grep -q 'Phase 4.3.2.26 V8.4.6' "$MAIN"
           grep -q 'ArsFlightRecorder.install' "$MAIN"
 
-          grep -q 'BitmapSafety.scaledForScan' "$MAIN"
+          grep -q 'ArsUpdateChannel.observeLaunch' "$FLIGHT"
+          grep -q 'Current Installed Version' "$FLIGHT"
+          grep -q 'Previous Installed Version' "$FLIGHT"
+          grep -q 'Signer SHA-256' "$FLIGHT"
+          grep -q 'Latest Recorded Update' "$FLIGHT"
+          grep -q 'Database Version: 5' "$FLIGHT"
 
-          grep -q 'catch (oom: OutOfMemoryError)' "$MAIN"
+          grep -q 'object ArsUpdateChannel' "$UPDATE"
+          grep -q 'APP_UPDATE' "$UPDATE"
+          grep -q 'IN_PLACE_UPDATE' "$UPDATE"
+          grep -q 'signingSha256' "$UPDATE"
+          grep -q 'firstInstallTime' "$UPDATE"
+          grep -q 'lastUpdateTime' "$UPDATE"
 
-          grep -q 'ARS DEV CENTER' "$MAIN"
-
-          grep -q 'Phase 4.3.2.24 V8.4.4' "$MAIN"
-
-          grep -q 'diagnosticSession' "$VM"
-
-          grep -q 'selectRecognitionReferences' "$REPO"
-
-          grep -q 'SCAN_PIPELINE' "$REPO"
-
-          grep -q 'SCAN_OBJECT' "$REPO"
-
-          grep -q 'MASTER_VERIFY' "$REPO"
-
-          grep -q 'existing.take(8)' "$REPO"
-
-          grep -q 'loadReferenceBank' "$MATCHER"
-
-          grep -q 'BitmapSafety.MATCH_MAX_DIMENSION' "$MATCHER"
-
-          grep -q 'bitmap.recycle' "$MATCHER"
-
-          grep -q 'UNCAUGHT_CRASH' "$FLIGHT"
-
-          grep -q 'flight_recorder.jsonl' "$FLIGHT"
-
-          grep -q 'MAX_REPORT_LINES' "$FLIGHT"
-
-          grep -q 'CHATGPT REPORT' "$DEV"
-
+          grep -q 'OFFICIAL UPDATE CHANNEL' "$DEV"
+          grep -q 'metadata versi' "$DEV"
           grep -q 'com.openai.chatgpt' "$DEV"
 
-          grep -q 'SCAN_MAX_DIMENSION = 1024' "$BITMAP"
-
-          grep -q 'MATCH_MAX_DIMENSION = 720' "$BITMAP"
-
-          grep -q 'TAMBAH SEMUA KE KERANJANG' "$MAIN"
+          grep -q 'ScanResultAggregator.aggregate' "$REPO"
+          grep -q 'SCAN_AGGREGATION' "$REPO"
+          grep -q 'fun scoreBatch' "$MATCHER"
+          grep -q 'MAX_OBJECTS = 6' "$SCANNER"
+          grep -q 'object ScanResultAggregator' "$AGG"
 
           echo ""
           echo "========================================"
-          echo "V8.4.4 FIX1 SOURCE VALIDATION OK"
+          echo "V8.4.6 SOURCE VALIDATION OK"
           echo "========================================"
 
       - name: Validate Kotlin source balance
@@ -226,23 +228,14 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          pairs = {
-              '{': '}',
-              '(': ')',
-              '[': ']'
-          }
-
-          reverse = {
-              v: k for k, v in pairs.items()
-          }
+          pairs = {'{': '}', '(': ')', '[': ']'}
+          reverse = {v: k for k, v in pairs.items()}
 
           def check(path):
               text = path.read_text(encoding='utf-8')
-
               stack = []
               i = 0
               line = 1
-
               line_comment = False
               block_comment = False
               string = False
@@ -263,11 +256,7 @@ jobs:
                       continue
 
                   if block_comment:
-                      if (
-                          c == '*'
-                          and i + 1 < len(text)
-                          and text[i + 1] == '/'
-                      ):
+                      if c == '*' and i + 1 < len(text) and text[i + 1] == '/':
                           block_comment = False
                           i += 2
                       else:
@@ -281,7 +270,6 @@ jobs:
                           escaped = True
                       elif c == '"':
                           string = False
-
                       i += 1
                       continue
 
@@ -292,24 +280,15 @@ jobs:
                           escaped = True
                       elif c == "'":
                           char = False
-
                       i += 1
                       continue
 
-                  if (
-                      c == '/'
-                      and i + 1 < len(text)
-                      and text[i + 1] == '/'
-                  ):
+                  if c == '/' and i + 1 < len(text) and text[i + 1] == '/':
                       line_comment = True
                       i += 2
                       continue
 
-                  if (
-                      c == '/'
-                      and i + 1 < len(text)
-                      and text[i + 1] == '*'
-                  ):
+                  if c == '/' and i + 1 < len(text) and text[i + 1] == '*':
                       block_comment = True
                       i += 2
                       continue
@@ -326,58 +305,85 @@ jobs:
 
                   if c in pairs:
                       stack.append((c, line))
-
                   elif c in reverse:
-                      if (
-                          not stack
-                          or stack[-1][0] != reverse[c]
-                      ):
-                          raise SystemExit(
-                              f"Mismatch in {path}:{line}"
-                          )
-
+                      if not stack or stack[-1][0] != reverse[c]:
+                          raise SystemExit(f"Mismatch in {path}:{line}")
                       stack.pop()
 
                   i += 1
 
-              if (
-                  string
-                  or char
-                  or block_comment
-                  or stack
-              ):
-                  raise SystemExit(
-                      f"Unbalanced Kotlin: {path}"
-                  )
+              if string or char or block_comment or stack:
+                  raise SystemExit(f"Unbalanced Kotlin: {path}")
 
-          files = list(
-              Path('app/src/main/java').rglob('*.kt')
-          )
-
+          files = list(Path('app/src/main/java').rglob('*.kt'))
           for path in files:
               check(path)
 
-          print(
-              f"KOTLIN BALANCE OK: {len(files)} files"
-          )
+          print(f"KOTLIN BALANCE OK: {len(files)} files")
           PY
+
+      - name: Prepare ARS POS official release signing
+        shell: bash
+        env:
+          ARS_RELEASE_KEYSTORE_BASE64: ${{ secrets.ARS_RELEASE_KEYSTORE_BASE64 }}
+          ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
+          ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
+          ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ARS_RELEASE_KEYSTORE_BASE64" || {
+            echo "ERROR: GitHub Secret ARS_RELEASE_KEYSTORE_BASE64 belum dibuat."
+            exit 1
+          }
+
+          test -n "$ARS_RELEASE_STORE_PASSWORD" || {
+            echo "ERROR: GitHub Secret ARS_RELEASE_STORE_PASSWORD belum dibuat."
+            exit 1
+          }
+
+          test -n "$ARS_RELEASE_KEY_ALIAS" || {
+            echo "ERROR: GitHub Secret ARS_RELEASE_KEY_ALIAS belum dibuat."
+            exit 1
+          }
+
+          test -n "$ARS_RELEASE_KEY_PASSWORD" || {
+            echo "ERROR: GitHub Secret ARS_RELEASE_KEY_PASSWORD belum dibuat."
+            exit 1
+          }
+
+          KEYSTORE="$RUNNER_TEMP/ars-pos-official-release.jks"
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          test -s "$KEYSTORE"
+
+          keytool -list \
+            -keystore "$KEYSTORE" \
+            -storepass "$ARS_RELEASE_STORE_PASSWORD" \
+            -alias "$ARS_RELEASE_KEY_ALIAS" \
+            >/dev/null
+
+          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "Official release keystore validated."
 
       - name: Clean project
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle clean \
             --no-daemon \
             --stacktrace
 
-      - name: Build release APK
+      - name: Build official release APK
         shell: bash
+        env:
+          ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
+          ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
+          ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -385,11 +391,12 @@ jobs:
             --stacktrace \
             --warning-mode all
 
-      - name: Verify APK
+      - name: Verify official APK identity and signature
         shell: bash
+        env:
+          ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -403,14 +410,19 @@ jobs:
             exit 1
           }
 
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging "$APK" \
-            | grep -q 'package: name='
+          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1)
+          echo "$BADGING"
+
+          echo "$BADGING" | grep -q "name='com.arspos.anglerriausyndicate'"
+          echo "$BADGING" | grep -q "versionCode='141'"
+          echo "$BADGING" | grep -q "versionName='1.4.1'"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
             --verbose \
-            "$APK"
+            --print-certs \
+            "$APK" \
+            | tee signer-info.txt
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
             -c \
@@ -418,16 +430,39 @@ jobs:
             -v 4 \
             "$APK"
 
-          echo ""
-          echo "========================================"
-          echo "APK VERIFIED"
-          echo "========================================"
+          CERT_SHA=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt)
+          test -n "$CERT_SHA" || {
+            echo "ERROR: Tidak dapat membaca signer SHA-256 dari APK"
+            exit 1
+          }
+
+          NORMALIZED_CERT=$(printf '%s' "$CERT_SHA" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+          EXPECTED=$(printf '%s' "${ARS_RELEASE_CERT_SHA256:-}" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+
+          if [ -n "$EXPECTED" ] && [ "$NORMALIZED_CERT" != "$EXPECTED" ]; then
+            echo "ERROR: SIGNER BERUBAH. Build dihentikan untuk melindungi update channel."
+            echo "Current signer: $CERT_SHA"
+            exit 1
+          fi
+
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.1 (141)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+            "$CERT_SHA" > SIGNING_FINGERPRINT.txt
+
+          echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
+          echo "APK identity + signing verified."
+
+          {
+            echo "### ARS POS Official Release"
+            echo "- Version: 1.4.1 (141)"
+            echo "- Phase: 4.3.2.26 / V8.4.6"
+            echo "- Package: com.arspos.anglerriausyndicate"
+            echo "- Signer SHA-256: $CERT_SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Rename APK and SHA256
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -438,24 +473,23 @@ jobs:
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.3.9-PHASE4.3.2.24-V8.4.4-FIX1-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL-UPDATE-CHANNEL-SIGNED.apk"
 
           cp "$APK" "$OUT"
-
           sha256sum "$OUT" > "$OUT.sha256"
+          cp SIGNING_FINGERPRINT.txt app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
 
           ls -lh \
             "$OUT" \
-            "$OUT.sha256"
+            "$OUT.sha256" \
+            app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
 
-      - name: Upload signed APK
+      - name: Upload official signed APK
         uses: actions/upload-artifact@v4
-
         with:
-          name: ARS-POS-1.3.9-PHASE4.3.2.24-V8.4.4-FIX1
-
+          name: ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.9-PHASE4.3.2.24-V8.4.4-FIX1-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.9-PHASE4.3.2.24-V8.4.4-FIX1-SIGNED.apk.sha256
-
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL-UPDATE-CHANNEL-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL-UPDATE-CHANNEL-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
           if-no-files-found: error
