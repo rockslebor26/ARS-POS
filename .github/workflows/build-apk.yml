@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.21 Fullscreen Target Camera V8.4.1 FIX1
+    name: Build ARS POS Phase 4.3.2.22 Target Lock Engine V8.4.2
     runs-on: ubuntu-latest
 
     steps:
@@ -36,66 +36,52 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          test -d "$ANDROID_HOME/platforms/android-35"
-          test -d "$ANDROID_HOME/build-tools/35.0.0"
-          test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
-          test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
-
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
-      - name: Locate Phase 4.3.2.21 V8.4.1 FIX1 source ZIP
+      - name: Locate V8.4.2 source ZIP
         shell: bash
         run: |
           set -euo pipefail
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_22_V8_4_2_TARGET_LOCK_ENGINE.zip"
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_21_V8_4_1_FULLSCREEN_TARGET_CAMERA_FIX1.zip"
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP V8.4.1 FIX1 tidak ditemukan: $ZIP_FILE"
+          test -f "$ZIP_FILE" || {
+            echo "ERROR: ZIP V8.4.2 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
-          fi
+          }
 
           unzip -t "$ZIP_FILE"
-
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
       - name: Extract ARS POS project
         shell: bash
         run: |
           set -euo pipefail
-
           rm -rf extracted
           mkdir -p extracted
-
           unzip -o "$ZIP_FILE" -d extracted
 
       - name: Locate Gradle project
         shell: bash
         run: |
           set -euo pipefail
-
           SETTINGS=$(find extracted -type f -name 'settings.gradle.kts' | head -n 1)
-
           test -n "$SETTINGS" || {
             echo "ERROR: settings.gradle.kts tidak ditemukan"
             exit 1
           }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
-
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.1 FIX1 source files
+      - name: Validate V8.4.2 source files
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           REQUIRED=(
@@ -103,19 +89,18 @@ jobs:
             "build.gradle.kts"
             "gradle.properties"
             "app/build.gradle.kts"
+
             "app/src/main/AndroidManifest.xml"
             "app/src/main/res/xml/file_paths.xml"
 
             "app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/SmartProductInput.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/VisualProductMatch.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/VisualScanObject.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
-            "app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt"
 
             "app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
@@ -128,6 +113,8 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt"
+
+            "PHASE4_3_2_22_V8_4_2_TARGET_LOCK_ENGINE.md"
           )
 
           for FILE in "${REQUIRED[@]}"; do
@@ -137,49 +124,45 @@ jobs:
             }
           done
 
-          grep -q 'versionCode = 136' app/build.gradle.kts
-          grep -q 'versionName = "1.3.6"' app/build.gradle.kts
+          grep -q 'versionCode = 137' \
+            app/build.gradle.kts
+
+          grep -q 'versionName = "1.3.7"' \
+            app/build.gradle.kts
 
           CAMERA=app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
+          STUDIO=app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          SCANNER=app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
 
-          # Dialog wajib menggunakan Compose UI Window
+          grep -q 'data class TargetLockSpec' "$CAMERA"
+          grep -q 'defaultTargetLockSpec' "$CAMERA"
+          grep -q 'TARGET LOCK AKTIF' "$CAMERA"
+          grep -q 'onCaptured(outputFile, targetLockSpec)' "$CAMERA"
+
           grep -q 'import androidx.compose.ui.window.Dialog' "$CAMERA"
           grep -q 'import androidx.compose.ui.window.DialogProperties' "$CAMERA"
-
-          # Pastikan import Dialog yang salah tidak ada
           ! grep -q 'import androidx.compose.material3.Dialog' "$CAMERA"
 
-          # Fullscreen
-          grep -q 'usePlatformDefaultWidth = false' "$CAMERA"
-          grep -q 'decorFitsSystemWindows = false' "$CAMERA"
+          grep -q 'cropToTargetLock' "$STUDIO"
+          grep -q 'applyTargetLockToFrames' "$STUDIO"
+          grep -q 'background luar target dibuang' "$STUDIO"
 
-          # Kamera foto
-          grep -q 'ImageCapture' "$CAMERA"
+          grep -q 'MAX_OBJECTS = 8' "$SCANNER"
+          grep -q 'samePhysicalProposal' "$SCANNER"
+          grep -q 'intersectionArea' "$SCANNER"
 
-          # Kamera video
-          grep -q 'VideoCapture' "$CAMERA"
+          grep -q 'Phase 4.3.2.22 V8.4.2' \
+            app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          # Lock Target Object
-          grep -q 'LOCK TARGET' "$CAMERA"
-          grep -q 'TARGET TERKUNCI' "$CAMERA"
-
-          # Torch / flash
-          grep -q 'toggleTorch' "$CAMERA"
-
-          # Switch kamera
-          grep -q 'switchLens' "$CAMERA"
-
-          # Smart Shopping Scan
           grep -q 'TAMBAH SEMUA KE KERANJANG' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          echo "V8.4.1 FIX1 SOURCE VALIDATION OK"
+          echo "V8.4.2 SOURCE VALIDATION OK"
 
       - name: Validate Kotlin source balance
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           python3 - <<'PY'
@@ -209,7 +192,6 @@ jobs:
               escaped = False
 
               while i < len(text):
-
                   c = text[i]
 
                   if c == '\n':
@@ -288,7 +270,10 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
-                      if not stack or stack[-1][0] != reverse[c]:
+                      if (
+                          not stack
+                          or stack[-1][0] != reverse[c]
+                      ):
                           raise SystemExit(
                               f"Mismatch in {path}:{line}"
                           )
@@ -297,7 +282,12 @@ jobs:
 
                   i += 1
 
-              if string or char or block_comment or stack:
+              if (
+                  string
+                  or char
+                  or block_comment
+                  or stack
+              ):
                   raise SystemExit(
                       f"Unbalanced Kotlin: {path}"
                   )
@@ -318,7 +308,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle clean \
@@ -329,7 +318,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -341,10 +329,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
+          APK=$(find \
+            app/build/outputs/apk/release \
             -type f \
             -name '*.apk' \
             | head -n 1)
@@ -369,23 +357,23 @@ jobs:
             -v 4 \
             "$APK"
 
-          echo "APK VERIFIED: $APK"
+          echo "APK VERIFIED"
 
       - name: Rename APK and SHA256
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
+          APK=$(find \
+            app/build/outputs/apk/release \
             -type f \
             -name '*.apk' \
             | head -n 1)
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2-TARGET-LOCK-ENGINE-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -399,10 +387,10 @@ jobs:
         uses: actions/upload-artifact@v4
 
         with:
-          name: ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1
+          name: ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.6-PHASE4.3.2.21-V8.4.1-FIX1-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2-TARGET-LOCK-ENGINE-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2-TARGET-LOCK-ENGINE-SIGNED.apk.sha256
 
           if-no-files-found: error
