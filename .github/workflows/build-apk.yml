@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.22 Target Lock Engine V8.4.2
+    name: Build ARS POS Phase 4.3.2.23 Rod Focus Lock V8.4.3
     runs-on: ubuntu-latest
 
     steps:
@@ -36,19 +36,25 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -d "$ANDROID_HOME/build-tools/35.0.0"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.2 source ZIP
+      - name: Locate V8.4.3 source ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_22_V8_4_2_TARGET_LOCK_ENGINE.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_23_V8_4_3_ROD_FOCUS_LOCK.zip"
 
           test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V8.4.2 tidak ditemukan: $ZIP_FILE"
+            echo "ERROR: ZIP V8.4.3 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           }
@@ -69,16 +75,18 @@ jobs:
         run: |
           set -euo pipefail
           SETTINGS=$(find extracted -type f -name 'settings.gradle.kts' | head -n 1)
+
           test -n "$SETTINGS" || {
             echo "ERROR: settings.gradle.kts tidak ditemukan"
             exit 1
           }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.2 source files
+      - name: Validate V8.4.3 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -97,6 +105,7 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt"
+            "app/src/main/java/com/arspos/anglerriausyndicate/RodFocusProcessor.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
@@ -114,7 +123,7 @@ jobs:
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductEntity.kt"
             "app/src/main/java/com/arspos/anglerriausyndicate/data/db/ProductPhotoEntity.kt"
 
-            "PHASE4_3_2_22_V8_4_2_TARGET_LOCK_ENGINE.md"
+            "PHASE4_3_2_23_V8_4_3_ROD_FOCUS_LOCK.md"
           )
 
           for FILE in "${REQUIRED[@]}"; do
@@ -124,40 +133,88 @@ jobs:
             }
           done
 
-          grep -q 'versionCode = 137' \
+          grep -q 'versionCode = 138' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.3.7"' \
+          grep -q 'versionName = "1.3.8"' \
             app/build.gradle.kts
 
           CAMERA=app/src/main/java/com/arspos/anglerriausyndicate/FullscreenMasterCamera.kt
           STUDIO=app/src/main/java/com/arspos/anglerriausyndicate/ProductMasterStudio.kt
+          ROD=app/src/main/java/com/arspos/anglerriausyndicate/RodFocusProcessor.kt
+          MATCHER=app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt
           SCANNER=app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt
 
-          grep -q 'data class TargetLockSpec' "$CAMERA"
-          grep -q 'defaultTargetLockSpec' "$CAMERA"
-          grep -q 'TARGET LOCK AKTIF' "$CAMERA"
-          grep -q 'onCaptured(outputFile, targetLockSpec)' "$CAMERA"
+          grep -q 'TargetLockSpec(left = 0.36f, top = 0.04f, width = 0.28f, height = 0.92f' \
+            "$CAMERA"
 
-          grep -q 'import androidx.compose.ui.window.Dialog' "$CAMERA"
-          grep -q 'import androidx.compose.ui.window.DialogProperties' "$CAMERA"
-          ! grep -q 'import androidx.compose.material3.Dialog' "$CAMERA"
+          grep -q 'fillMaxWidth(if (isLongObject) 0.32f else 1f)' \
+            "$CAMERA"
 
-          grep -q 'cropToTargetLock' "$STUDIO"
-          grep -q 'applyTargetLockToFrames' "$STUDIO"
-          grep -q 'background luar target dibuang' "$STUDIO"
+          grep -q 'ROD FOCUS' \
+            "$CAMERA"
 
-          grep -q 'MAX_OBJECTS = 8' "$SCANNER"
-          grep -q 'samePhysicalProposal' "$SCANNER"
-          grep -q 'intersectionArea' "$SCANNER"
+          grep -q 'LOCK ROD' \
+            "$CAMERA"
 
-          grep -q 'Phase 4.3.2.22 V8.4.2' \
+          grep -q 'Sejajarkan joran dengan garis tengah' \
+            "$CAMERA"
+
+          grep -q 'import androidx.compose.ui.window.Dialog' \
+            "$CAMERA"
+
+          grep -q 'import androidx.compose.ui.window.DialogProperties' \
+            "$CAMERA"
+
+          ! grep -q 'import androidx.compose.material3.Dialog' \
+            "$CAMERA"
+
+          grep -q 'object RodFocusProcessor' \
+            "$ROD"
+
+          grep -q 'fun isolate' \
+            "$ROD"
+
+          grep -q 'neutralBackground' \
+            "$ROD"
+
+          grep -q 'MIN_KEEP_RATIO' \
+            "$ROD"
+
+          grep -q 'MAX_KEEP_RATIO' \
+            "$ROD"
+
+          grep -q 'processTargetLock' \
+            "$STUDIO"
+
+          grep -q 'RodFocusProcessor.isolate' \
+            "$STUDIO"
+
+          grep -q 'ROD-FOCUS' \
+            "$STUDIO"
+
+          grep -q 'V8.4.3' \
+            "$MATCHER"
+
+          grep -q 'RodFocusProcessor.isolate(scan)' \
+            "$MATCHER"
+
+          grep -q 'angle in intArrayOf(90, 180, 270)' \
+            "$MATCHER"
+
+          grep -q 'MAX_OBJECTS = 8' \
+            "$SCANNER"
+
+          grep -q 'samePhysicalProposal' \
+            "$SCANNER"
+
+          grep -q 'Phase 4.3.2.23 V8.4.3' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
           grep -q 'TAMBAH SEMUA KE KERANJANG' \
             app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt
 
-          echo "V8.4.2 SOURCE VALIDATION OK"
+          echo "V8.4.3 SOURCE VALIDATION OK"
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -192,6 +249,7 @@ jobs:
               escaped = False
 
               while i < len(text):
+
                   c = text[i]
 
                   if c == '\n':
@@ -214,6 +272,7 @@ jobs:
                           i += 2
                       else:
                           i += 1
+
                       continue
 
                   if string:
@@ -270,6 +329,7 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
+
                       if (
                           not stack
                           or stack[-1][0] != reverse[c]
@@ -373,7 +433,7 @@ jobs:
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2-TARGET-LOCK-ENGINE-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.3.8-PHASE4.3.2.23-V8.4.3-ROD-FOCUS-LOCK-SIGNED.apk"
 
           cp "$APK" "$OUT"
 
@@ -387,10 +447,10 @@ jobs:
         uses: actions/upload-artifact@v4
 
         with:
-          name: ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2
+          name: ARS-POS-1.3.8-PHASE4.3.2.23-V8.4.3
 
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2-TARGET-LOCK-ENGINE-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.7-PHASE4.3.2.22-V8.4.2-TARGET-LOCK-ENGINE-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.8-PHASE4.3.2.23-V8.4.3-ROD-FOCUS-LOCK-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.3.8-PHASE4.3.2.23-V8.4.3-ROD-FOCUS-LOCK-SIGNED.apk.sha256
 
           if-no-files-found: error
