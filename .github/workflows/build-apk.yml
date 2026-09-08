@@ -370,6 +370,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle clean \
@@ -384,6 +385,7 @@ jobs:
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -397,6 +399,7 @@ jobs:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -431,6 +434,7 @@ jobs:
             "$APK"
 
           CERT_SHA=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt)
+
           test -n "$CERT_SHA" || {
             echo "ERROR: Tidak dapat membaca signer SHA-256 dari APK"
             exit 1
@@ -449,6 +453,7 @@ jobs:
             "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
           echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
+
           echo "APK identity + signing verified."
 
           {
@@ -463,6 +468,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -476,8 +482,11 @@ jobs:
           OUT="app/build/outputs/apk/release/ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL-UPDATE-CHANNEL-SIGNED.apk"
 
           cp "$APK" "$OUT"
+
           sha256sum "$OUT" > "$OUT.sha256"
-          cp SIGNING_FINGERPRINT.txt app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
+
+          cp SIGNING_FINGERPRINT.txt \
+            app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
 
           ls -lh \
             "$OUT" \
@@ -486,10 +495,13 @@ jobs:
 
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
+
         with:
           name: ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL
+
           path: |
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL-UPDATE-CHANNEL-SIGNED.apk
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.1-PHASE4.3.2.26-V8.4.6-OFFICIAL-UPDATE-CHANNEL-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
+
           if-no-files-found: error
