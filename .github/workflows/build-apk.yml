@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.29 V8.4.9 Rod Anchor Cross-Lane Gate
+    name: Build ARS POS Phase 4.3.2.30 V8.4.10 Anchor-Preserving Rod Identity
     runs-on: ubuntu-latest
 
     steps:
@@ -47,15 +47,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.9 source ZIP
+      - name: Locate V8.4.10 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_29_V8_4_9_ROD_ANCHOR_CROSS_LANE_GATE.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_30_V8_4_10_ANCHOR_PRESERVING_ROD_IDENTITY.zip"
 
           test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V8.4.9 tidak ditemukan: $ZIP_FILE"
+            echo "ERROR: ZIP V8.4.10 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           }
@@ -99,7 +99,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.9 source files
+      - name: Validate V8.4.10 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -145,7 +145,7 @@ jobs:
             "$PKG/data/db/ProductEntity.kt"
             "$PKG/data/db/ProductPhotoEntity.kt"
 
-            "PHASE4_3_2_29_V8_4_9_ROD_ANCHOR_CROSS_LANE_GATE.md"
+            "PHASE4_3_2_30_V8_4_10_ANCHOR_PRESERVING_ROD_IDENTITY.md"
             "ARS_OFFICIAL_RELEASE_SETUP.md"
             "PROJECT_CONTINUITY.md"
           )
@@ -159,8 +159,8 @@ jobs:
           done
 
           grep -q 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
-          grep -q 'versionCode = 144' app/build.gradle.kts
-          grep -q 'versionName = "1.4.4"' app/build.gradle.kts
+          grep -q 'versionCode = 145' app/build.gradle.kts
+          grep -q 'versionName = "1.4.5"' app/build.gradle.kts
 
           grep -q 'create("arsOfficialRelease")' app/build.gradle.kts
           grep -q 'releaseSigningAvailable' app/build.gradle.kts
@@ -180,12 +180,12 @@ jobs:
           ENGINE="$PKG/data/SmartRecognitionEngine.kt"
           CANDIDATE="$PKG/data/RecognitionCandidate.kt"
 
-          grep -q 'Phase 4.3.2.29 V8.4.9' "$MAIN"
-          grep -q 'Rod Anchor Identity' "$MAIN"
+          grep -q 'Phase 4.3.2.30 V8.4.10' "$MAIN"
+          grep -q 'Anchor-Preserving Rod Identity' "$MAIN"
           grep -q 'Cross-Lane Scene Gate' "$MAIN"
 
-          grep -q 'Phase: 4.3.2.29' "$FLIGHT"
-          grep -q 'V8.4.9 — Rod Anchor Identity + Cross-Lane Scene Gate' "$FLIGHT"
+          grep -q 'Phase: 4.3.2.30' "$FLIGHT"
+          grep -q 'V8.4.10 — Anchor-Preserving Rod Identity + Deterministic Scene Gate' "$FLIGHT"
           grep -q 'persisted update channel' "$FLIGHT"
           grep -q 'Latest cross-lane proposals suppressed' "$FLIGHT"
           grep -q 'Latest background long proposals suppressed' "$FLIGHT"
@@ -244,6 +244,10 @@ jobs:
           grep -q 'recycledCrops' "$REPO"
           grep -q 'longProposalCount <= 1' "$REPO"
 
+          grep -q 'anchorOrder = listOf' "$REPO"
+          grep -q 'productRanks.take(2)' "$REPO"
+          grep -q '"LONG_HANDLE", "LONG_SIDE", "LONG_TIP", "LONG_FULL_A", "LONG_FULL_B"' "$REPO"
+
           grep -q 'laneFamily' "$AGG"
           grep -q 'existing.all' "$AGG"
           grep -q 'shouldSuppressDuplicateLong' "$AGG"
@@ -255,7 +259,7 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "V8.4.9 SOURCE VALIDATION OK"
+          echo "V8.4.10 SOURCE VALIDATION OK"
           echo "========================================"
 
       - name: Validate Kotlin source balance
@@ -458,8 +462,8 @@ jobs:
           echo "$BADGING"
 
           echo "$BADGING" | grep -q "name='com.arspos.anglerriausyndicate'"
-          echo "$BADGING" | grep -q "versionCode='144'"
-          echo "$BADGING" | grep -q "versionName='1.4.4'"
+          echo "$BADGING" | grep -q "versionCode='145'"
+          echo "$BADGING" | grep -q "versionName='1.4.5'"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -475,6 +479,7 @@ jobs:
             "$APK"
 
           CERT_SHA=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt)
+
           test -n "$CERT_SHA" || {
             echo "ERROR: Tidak dapat membaca signer SHA-256 dari APK"
             exit 1
@@ -494,7 +499,7 @@ jobs:
             exit 1
           fi
 
-          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.4 (144)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.5 (145)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
             "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
           echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
@@ -502,11 +507,11 @@ jobs:
 
           {
             echo "### ARS POS Official Release"
-            echo "- Version: 1.4.4 (144)"
-            echo "- Phase: 4.3.2.29 / V8.4.9"
+            echo "- Version: 1.4.5 (145)"
+            echo "- Phase: 4.3.2.30 / V8.4.10"
             echo "- Package: com.arspos.anglerriausyndicate"
             echo "- Signer SHA-256: $CERT_SHA"
-            echo "- Update target: install directly over V8.4.8 Official (do not uninstall)"
+            echo "- Update target: install directly over V8.4.9 Official (do not uninstall)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Rename APK and SHA256
@@ -523,7 +528,7 @@ jobs:
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.4.4-PHASE4.3.2.29-V8.4.9-ROD-ANCHOR-CROSS-LANE-GATE-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-SIGNED.apk"
 
           cp "$APK" "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
@@ -537,9 +542,9 @@ jobs:
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.4.4-PHASE4.3.2.29-V8.4.9-OFFICIAL
+          name: ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.4-PHASE4.3.2.29-V8.4.9-ROD-ANCHOR-CROSS-LANE-GATE-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.4-PHASE4.3.2.29-V8.4.9-ROD-ANCHOR-CROSS-LANE-GATE-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
           if-no-files-found: error
