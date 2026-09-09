@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.31 V8.4.11 Angle-Aware Physical Track
+    name: Build ARS POS Phase 4.3.2.32 V8.4.12 Cross-Category Identity Firewall
     runs-on: ubuntu-latest
 
     steps:
@@ -46,12 +46,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.11 source ZIP
+      - name: Locate V8.4.12 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE=./ARS_POS_PHASE4_3_2_31_V8_4_11_ANGLE_AWARE_PHYSICAL_TRACK_LIVE_ROD_ANCHOR.zip
+          ZIP_FILE=./ARS_POS_PHASE4_3_2_32_V8_4_12_CROSS_CATEGORY_IDENTITY_FIREWALL.zip
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Source ZIP tidak ditemukan: $ZIP_FILE"
@@ -95,7 +95,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.11 source
+      - name: Validate V8.4.12 source
         shell: bash
         run: |
           set -euo pipefail
@@ -116,10 +116,11 @@ jobs:
             "$PKG/SmartVisualScanner.kt"
             "$PKG/LongObjectAnalyzer.kt"
             "$PKG/ScanProposal.kt"
+            "$PKG/CrossCategorySceneFirewall.kt"
             "$PKG/RodPhysicalTrackResolver.kt"
             "$PKG/RodAnchorExtractor.kt"
             "$PKG/ProductVisualMatcher.kt"
-            "PHASE4_3_2_31_V8_4_11_ANGLE_AWARE_PHYSICAL_TRACK_LIVE_ROD_ANCHOR.md"
+            "PHASE4_3_2_32_V8_4_12_CROSS_CATEGORY_IDENTITY_FIREWALL.md"
             "$PKG/data/ProductionRepository.kt"
             "$PKG/data/SmartRecognitionEngine.kt"
             "$PKG/data/RecognitionCandidate.kt"
@@ -133,8 +134,8 @@ jobs:
           done
 
           grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
-          grep -Fq 'versionCode = 146' app/build.gradle.kts
-          grep -Fq 'versionName = "1.4.6"' app/build.gradle.kts
+          grep -Fq 'versionCode = 147' app/build.gradle.kts
+          grep -Fq 'versionName = "1.4.7"' app/build.gradle.kts
           grep -Fq 'create("arsOfficialRelease")' app/build.gradle.kts
           grep -Fq 'releaseSigningAvailable' app/build.gradle.kts
 
@@ -143,28 +144,38 @@ jobs:
             exit 1
           fi
 
-          grep -Fq 'Phase 4.3.2.31 V8.4.11' "$PKG/MainActivity.kt"
-          grep -Fq 'Phase: 4.3.2.31' "$PKG/ArsFlightRecorder.kt"
+          grep -Fq 'Phase 4.3.2.32 V8.4.12' "$PKG/MainActivity.kt"
+          grep -Fq 'Phase: 4.3.2.32' "$PKG/ArsFlightRecorder.kt"
           grep -Fq 'APP_UPDATE' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'IN_PLACE_UPDATE' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'signingSha256' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'applyCrossLaneSceneGate' "$PKG/SmartVisualScanner.kt"
+          grep -Fq 'CrossCategorySceneFirewall.apply' "$PKG/SmartVisualScanner.kt"
+          grep -Fq 'visualOnlyBlocked' "$PKG/ScanProposal.kt"
+          grep -Fq 'NORMAL_INTERSECTS_ROD_AXIS' "$PKG/CrossCategorySceneFirewall.kt"
+          grep -Fq 'INDEPENDENT_COMPACT_NORMAL' "$PKG/CrossCategorySceneFirewall.kt"
           grep -Fq 'orientedLongCrop' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'RodPhysicalTrackResolver.resolve' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'axisAngleDeg' "$PKG/ScanProposal.kt"
           grep -Fq 'normalizeAxis' "$PKG/ScanCoordinateNormalizer.kt"
           grep -Fq 'crossingPairsPreserved' "$PKG/RodPhysicalTrackResolver.kt"
           grep -Fq 'scoreBatchRodAnchorAware' "$PKG/ProductVisualMatcher.kt"
-          grep -Fq 'handleOnLeft' "$PKG/RodAnchorExtractor.kt"
+          grep -Fq 'scoreBatchPrepared' "$PKG/ProductVisualMatcher.kt"
+          grep -Fq 'leftEnd' "$PKG/RodAnchorExtractor.kt"
+          grep -Fq 'rightEnd' "$PKG/RodAnchorExtractor.kt"
           grep -Fq 'LONG_HANDLE' "$PKG/ProductVisualMatcher.kt"
           grep -Fq 'rodStructureScore(bitmap, proposal)' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'crossCategoryVisualOnlyBlocked' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'nativeGrowthFromBaselineMb' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'angleAwareTracks' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'visualOnlyAllowed' "$PKG/data/SmartRecognitionEngine.kt"
+          grep -Fq 'REJECT_CROSS_CATEGORY_VISUAL_ONLY' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'rodAnchorScore' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'MIN_LONG_VISUAL_MARGIN = 14' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'MIN_LONG_ANCHOR_MARGIN = 8' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'ROD_ANCHOR_VISUAL_VERIFIED' "$PKG/data/SmartRecognitionEngine.kt"
 
-          echo "V8.4.11 source validation OK."
+          echo "V8.4.12 source validation OK."
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -264,7 +275,6 @@ jobs:
                   raise SystemExit(f"Unbalanced Kotlin: {path}")
 
           files = list(Path('app/src/main/java').rglob('*.kt'))
-
           for path in files:
               check(path)
 
@@ -278,7 +288,6 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
 
@@ -307,7 +316,6 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
@@ -319,7 +327,6 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
@@ -329,7 +336,6 @@ jobs:
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
-
         run: |
           set -euo pipefail
 
@@ -349,13 +355,13 @@ jobs:
             exit 1
           fi
 
-          if [[ "$BADGING" != *"versionCode='146'"* ]]; then
-            echo "ERROR: versionCode APK bukan 146."
+          if [[ "$BADGING" != *"versionCode='147'"* ]]; then
+            echo "ERROR: versionCode APK bukan 147."
             exit 1
           fi
 
-          if [[ "$BADGING" != *"versionName='1.4.6'"* ]]; then
-            echo "ERROR: versionName APK bukan 1.4.6."
+          if [[ "$BADGING" != *"versionName='1.4.7'"* ]]; then
+            echo "ERROR: versionName APK bukan 1.4.7."
             exit 1
           fi
 
@@ -389,18 +395,18 @@ jobs:
             exit 1
           fi
 
-          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.6 (146)\nPhase: 4.3.2.31 / V8.4.11\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.7 (147)\nPhase: 4.3.2.32 / V8.4.12\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
             "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
           echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
 
           {
             echo "### ARS POS Official Release"
-            echo "- Version: 1.4.6 (146)"
-            echo "- Phase: 4.3.2.31 / V8.4.11"
+            echo "- Version: 1.4.7 (147)"
+            echo "- Phase: 4.3.2.32 / V8.4.12"
             echo "- Package: com.arspos.anglerriausyndicate"
             echo "- Signer SHA-256: $CERT_SHA"
-            echo "- Update target: install directly over V8.4.10 / 1.4.5 (145) Official (do not uninstall)"
+            echo "- Update target: install directly over V8.4.11 / 1.4.6 (146) Official (do not uninstall)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Package APK and SHA256
@@ -418,7 +424,7 @@ jobs:
           fi
 
           OUTPUT_DIR=app/build/outputs/apk/release
-          OUTPUT_NAME=ARS-POS-1.4.6-V8.4.11-SIGNED.apk
+          OUTPUT_NAME=ARS-POS-1.4.7-V8.4.12-SIGNED.apk
           OUT=$OUTPUT_DIR/$OUTPUT_NAME
 
           cp "$APK" "$OUT"
@@ -441,9 +447,9 @@ jobs:
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.4.6-PHASE4.3.2.31-V8.4.11-OFFICIAL
+          name: ARS-POS-1.4.7-PHASE4.3.2.32-V8.4.12-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.6-V8.4.11-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.6-V8.4.11-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.7-V8.4.12-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.7-V8.4.12-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
           if-no-files-found: error
