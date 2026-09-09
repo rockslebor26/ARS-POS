@@ -65,8 +65,7 @@ jobs:
           unzip -l "$ZIP_FILE" | grep -q \
             'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt'
 
-          unzip 
-        -l "$ZIP_FILE" | grep -q \
+          unzip -l "$ZIP_FILE" | grep -q \
             'app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt'
 
           unzip -l "$ZIP_FILE" | grep -q \
@@ -563,23 +562,4 @@ jobs:
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX1-SIGNED.apk"
-
-          cp "$APK" "$OUT"
-          sha256sum "$OUT" > "$OUT.sha256"
-          cp SIGNING_FINGERPRINT.txt app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
-
-          ls -lh \
-            "$OUT" \
-            "$OUT.sha256" \
-            app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
-
-      - name: Upload official signed APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-FIX1-OFFICIAL
-          path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX1-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX1-SIGNED.apk.sha256
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
-          if-no-files-found: error
+          OUT="app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX
