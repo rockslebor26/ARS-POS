@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.30 V8.4.10 Anchor-Preserving Rod Identity
+    name: Build ARS POS Phase 4.3.2.30 V8.4.10 Anchor-Preserving Rod Identity FIX1
     runs-on: ubuntu-latest
 
     steps:
@@ -30,9 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           yes | sdkmanager --licenses >/dev/null || true
-
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-35" \
@@ -49,117 +47,30 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # ============================================================
-      # PHASE 4.3.2.30
-      # ROBUST SOURCE ZIP LOCATOR
-      #
-      # Tidak lagi bergantung pada satu nama ZIP secara mutlak.
-      # Workflow mencari kandidat V8.4.10 kemudian memvalidasi isi.
-      # ============================================================
-
       - name: Locate V8.4.10 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "========================================"
-          echo "ARS POS SOURCE ZIP DISCOVERY"
-          echo "Phase 4.3.2.30 / V8.4.10"
-          echo "========================================"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_30_V8_4_10_ANCHOR_PRESERVING_ROD_IDENTITY_FIX1.zip"
 
-          echo ""
-          echo "ZIP files available in repository:"
-          find . \
-            -maxdepth 4 \
-            -type f \
-            -iname '*.zip' \
-            -not -path './.git/*' \
-            -print \
-            | sort || true
-
-          echo ""
-          echo "Searching V8.4.10 source candidates..."
-
-          mapfile -t CANDIDATES < <(
-            find . \
-              -maxdepth 4 \
-              -type f \
-              \( \
-                -iname '*V8_4_10*.zip' \
-                -o -iname '*V8.4.10*.zip' \
-                -o -iname '*PHASE4_3_2_30*.zip' \
-              \) \
-              -not -path './.git/*' \
-              -print \
-              | sort
-          )
-
-          if [ "${#CANDIDATES[@]}" -eq 0 ]; then
-            echo ""
-            echo "ERROR: Tidak ada ZIP kandidat Phase 4.3.2.30 / V8.4.10."
-            echo ""
-            echo "Pastikan source ZIP V8.4.10 sudah berada di repository."
+          test -f "$ZIP_FILE" || {
+            echo "ERROR: ZIP V8.4.10 tidak ditemukan: $ZIP_FILE"
+            find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
-          fi
+          }
 
-          ZIP_FILE=""
+          unzip -t "$ZIP_FILE"
 
-          for CANDIDATE in "${CANDIDATES[@]}"; do
-            echo ""
-            echo "Checking candidate:"
-            echo "  $CANDIDATE"
+          unzip -l "$ZIP_FILE" | grep -q \
+            'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt'
 
-            if ! unzip -t "$CANDIDATE" >/dev/null 2>&1; then
-              echo "  -> REJECT: ZIP corrupt / invalid"
-              continue
-            fi
+          unzip 
+        -l "$ZIP_FILE" | grep -q \
+            'app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt'
 
-            LISTING="$(unzip -Z1 "$CANDIDATE")"
-
-            if ! printf '%s\n' "$LISTING" | \
-              grep -q 'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt'; then
-              echo "  -> REJECT: ScanProposal.kt tidak ditemukan"
-              continue
-            fi
-
-            if ! printf '%s\n' "$LISTING" | \
-              grep -q 'app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt'; then
-              echo "  -> REJECT: LongObjectAnalyzer.kt tidak ditemukan"
-              continue
-            fi
-
-            if ! printf '%s\n' "$LISTING" | \
-              grep -q 'app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt'; then
-              echo "  -> REJECT: SmartRecognitionEngine.kt tidak ditemukan"
-              continue
-            fi
-
-            if ! printf '%s\n' "$LISTING" | \
-              grep -q 'settings.gradle.kts'; then
-              echo "  -> REJECT: settings.gradle.kts tidak ditemukan"
-              continue
-            fi
-
-            echo "  -> ACCEPTED"
-
-            ZIP_FILE="$CANDIDATE"
-            break
-          done
-
-          if [ -z "$ZIP_FILE" ]; then
-            echo ""
-            echo "ERROR: Kandidat ZIP ditemukan tetapi tidak ada"
-            echo "yang lolos validasi source ARS POS V8.4.10."
-            exit 1
-          fi
-
-          echo ""
-          echo "========================================"
-          echo "SOURCE ZIP SELECTED"
-          echo "$ZIP_FILE"
-          echo "========================================"
-
-          unzip -t "$ZIP_FILE" >/dev/null
+          unzip -l "$ZIP_FILE" | grep -q \
+            'app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt'
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
@@ -168,43 +79,28 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Extracting:"
-          echo "$ZIP_FILE"
-
           rm -rf extracted
           mkdir -p extracted
-
           unzip -o "$ZIP_FILE" -d extracted
-
-          echo ""
-          echo "Extraction completed."
 
       - name: Locate Gradle project
         shell: bash
         run: |
           set -euo pipefail
 
-          SETTINGS=$(find extracted \
-            -type f \
-            -name 'settings.gradle.kts' \
-            | head -n 1)
+          SETTINGS=$(find extracted -type f -name 'settings.gradle.kts' | head -n 1)
 
           test -n "$SETTINGS" || {
-            echo "ERROR: settings.gradle.kts tidak ditemukan."
+            echo "ERROR: settings.gradle.kts tidak ditemukan"
             exit 1
           }
 
           PROJECT_DIR=$(dirname "$SETTINGS")
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Gradle project: $PROJECT_DIR"
 
-          echo ""
-          echo "========================================"
-          echo "GRADLE PROJECT FOUND"
-          echo "$PROJECT_DIR"
-          echo "========================================"
-
-      - name: Validate V8.4.10 source files
+      - name: Validate V8.4.10 FIX1 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -212,6 +108,31 @@ jobs:
           cd "$PROJECT_DIR"
 
           PKG="app/src/main/java/com/arspos/anglerriausyndicate"
+          FAILURES=0
+
+          require_file() {
+            local FILE="$1"
+            if [ -f "$FILE" ]; then
+              echo "OK FILE: $FILE"
+            else
+              echo "ERROR MISSING FILE: $FILE"
+              FAILURES=$((FAILURES + 1))
+            fi
+          }
+
+          require_text() {
+            local FILE="$1"
+            local TEXT="$2"
+            local NAME="$3"
+            if grep -Fq "$TEXT" "$FILE"; then
+              echo "OK: $NAME"
+            else
+              echo "ERROR VALIDATION FAILED: $NAME"
+              echo "  File: $FILE"
+              echo "  Expected: $TEXT"
+              FAILURES=$((FAILURES + 1))
+            fi
+          }
 
           REQUIRED=(
             "settings.gradle.kts"
@@ -256,39 +177,20 @@ jobs:
           )
 
           for FILE in "${REQUIRED[@]}"; do
-            if [ ! -f "$FILE" ]; then
-              echo "ERROR: Required file missing:"
-              echo "$FILE"
-              exit 1
-            fi
+            require_file "$FILE"
           done
 
-          grep -q \
-            'applicationId = "com.arspos.anglerriausyndicate"' \
-            app/build.gradle.kts
+          require_text app/build.gradle.kts 'applicationId = "com.arspos.anglerriausyndicate"' 'Official package ID'
+          require_text app/build.gradle.kts 'versionCode = 145' 'Version code 145'
+          require_text app/build.gradle.kts 'versionName = "1.4.5"' 'Version name 1.4.5'
+          require_text app/build.gradle.kts 'create("arsOfficialRelease")' 'Official release signing config'
+          require_text app/build.gradle.kts 'releaseSigningAvailable' 'Release signing availability guard'
 
-          grep -q \
-            'versionCode = 145' \
-            app/build.gradle.kts
-
-          grep -q \
-            'versionName = "1.4.5"' \
-            app/build.gradle.kts
-
-          grep -q \
-            'create("arsOfficialRelease")' \
-            app/build.gradle.kts
-
-          grep -q \
-            'releaseSigningAvailable' \
-            app/build.gradle.kts
-
-          if grep -q \
-            'signingConfig = signingConfigs.getByName("debug")' \
-            app/build.gradle.kts; then
-
+          if grep -Fq 'signingConfig = signingConfigs.getByName("debug")' app/build.gradle.kts; then
             echo "ERROR: Release APK masih menggunakan debug signing."
-            exit 1
+            FAILURES=$((FAILURES + 1))
+          else
+            echo "OK: Release does not use debug signing"
           fi
 
           MAIN="$PKG/MainActivity.kt"
@@ -305,90 +207,95 @@ jobs:
           ENGINE="$PKG/data/SmartRecognitionEngine.kt"
           CANDIDATE="$PKG/data/RecognitionCandidate.kt"
 
-          grep -q 'Phase 4.3.2.30 V8.4.10' "$MAIN"
-          grep -q 'Anchor-Preserving Rod Identity' "$MAIN"
-          grep -q 'Cross-Lane Scene Gate' "$MAIN"
+          require_text "$MAIN" 'Phase 4.3.2.30 V8.4.10' 'Main phase/version'
+          require_text "$MAIN" 'Anchor-Preserving Rod Identity' 'Anchor-Preserving Rod Identity'
+          require_text "$MAIN" 'Cross-Lane Scene Gate' 'Cross-Lane Scene Gate'
 
-          grep -q 'Phase: 4.3.2.30' "$FLIGHT"
-          grep -q \
-            'V8.4.10 — Anchor-Preserving Rod Identity + Deterministic Scene Gate' \
-            "$FLIGHT"
+          require_text "$FLIGHT" 'Phase: 4.3.2.30' 'Flight Recorder phase 4.3.2.30'
+          require_text "$FLIGHT" 'V8.4.10 — Anchor-Preserving Rod Identity + Deterministic Scene Gate' 'Flight Recorder engine label'
+          require_text "$FLIGHT" 'persisted update channel' 'Persisted update channel'
+          require_text "$FLIGHT" 'Latest cross-lane proposals suppressed' 'Cross-lane telemetry'
+          require_text "$FLIGHT" 'Latest background long proposals suppressed' 'Background-long telemetry'
+          require_text "$FLIGHT" 'Latest native heap delta' 'Native heap telemetry'
+          require_text "$FLIGHT" 'Latest total PSS' 'Total PSS telemetry'
+          require_text "$FLIGHT" 'Latest decision rule' 'Decision rule telemetry'
+          require_text "$FLIGHT" 'Current Installed Version' 'Current installed version telemetry'
+          require_text "$FLIGHT" 'Previous Installed Version' 'Previous installed version telemetry'
+          require_text "$FLIGHT" 'Signer SHA-256' 'Signer telemetry'
 
-          grep -q 'persisted update channel' "$FLIGHT"
-          grep -q 'Latest cross-lane proposals suppressed' "$FLIGHT"
-          grep -q 'Latest background long proposals suppressed' "$FLIGHT"
-          grep -q 'Latest native heap delta' "$FLIGHT"
-          grep -q 'Latest total PSS' "$FLIGHT"
-          grep -q 'Latest decision rule' "$FLIGHT"
-          grep -q 'Current Installed Version' "$FLIGHT"
-          grep -q 'Previous Installed Version' "$FLIGHT"
-          grep -q 'Signer SHA-256' "$FLIGHT"
+          require_text "$UPDATE" 'APP_UPDATE' 'APP_UPDATE support'
+          require_text "$UPDATE" 'IN_PLACE_UPDATE' 'IN_PLACE_UPDATE support'
+          require_text "$UPDATE" 'signingSha256' 'Signing SHA-256 update protection'
 
-          grep -q 'APP_UPDATE' "$UPDATE"
-          grep -q 'IN_PLACE_UPDATE' "$UPDATE"
-          grep -q 'signingSha256' "$UPDATE"
+          require_text "$DEV" 'cross-lane scene gate' 'Dev Center cross-lane scene gate'
+          require_text "$DEV" 'rod-anchor identity' 'Dev Center rod-anchor identity'
+          require_text "$DEV" 'com.openai.chatgpt' 'Dev Center OpenAI package diagnostic'
 
-          grep -q 'cross-lane scene gate' "$DEV"
-          grep -q 'rod-anchor identity' "$DEV"
-          grep -q 'com.openai.chatgpt' "$DEV"
+          require_text "$PROPOSAL" 'normalOwnershipConflict' 'Proposal normal ownership conflict'
+          require_text "$PROPOSAL" 'rodStructureScore' 'Proposal rod structure score'
+          require_text "$PROPOSAL" 'SOURCE_CROSS_LANE' 'Proposal cross-lane source'
+          require_text "$PROPOSAL" 'SOURCE_BACKGROUND' 'Proposal background source'
 
-          grep -q 'normalOwnershipConflict' "$PROPOSAL"
-          grep -q 'rodStructureScore' "$PROPOSAL"
-          grep -q 'SOURCE_CROSS_LANE' "$PROPOSAL"
-          grep -q 'SOURCE_BACKGROUND' "$PROPOSAL"
+          require_text "$SCANNER" 'applyCrossLaneSceneGate' 'Scanner cross-lane gate'
+          require_text "$SCANNER" 'MIN_ANALYZER_ROD_STRUCTURE' 'Scanner rod structure threshold'
+          require_text "$SCANNER" 'STRONG_NORMAL_OWNERSHIP' 'Scanner strong normal ownership'
+          require_text "$SCANNER" 'SOURCE_CROSS_LANE' 'Scanner cross-lane source'
+          require_text "$SCANNER" 'SOURCE_BACKGROUND' 'Scanner background source'
+          require_text "$SCANNER" 'assignPhysicalHintsAndSuppressBridges' 'Physical hint / bridge suppression'
+          require_text "$SCANNER" 'isParallelContainer' 'Parallel-container guard'
 
-          grep -q 'applyCrossLaneSceneGate' "$SCANNER"
-          grep -q 'MIN_ANALYZER_ROD_STRUCTURE' "$SCANNER"
-          grep -q 'STRONG_NORMAL_OWNERSHIP' "$SCANNER"
-          grep -q 'SOURCE_CROSS_LANE' "$SCANNER"
-          grep -q 'SOURCE_BACKGROUND' "$SCANNER"
-          grep -q 'assignPhysicalHintsAndSuppressBridges' "$SCANNER"
-          grep -q 'isParallelContainer' "$SCANNER"
+          require_text "$LONG" 'rodStructureScore' 'Long analyzer rod structure score'
+          require_text "$LONG" 'background-rejection gate' 'Long analyzer background rejection'
 
-          grep -q 'rodStructureScore' "$LONG"
-          grep -q 'background-rejection gate' "$LONG"
+          require_text "$MATCHER" 'scoreBatchLongCached' 'Cached long scoring'
+          require_text "$MATCHER" 'referenceStripCache' 'Reference strip cache'
+          require_text "$MATCHER" 'longProfileSimilarity' 'Long profile similarity'
+          require_text "$MATCHER" 'scoreBatchCoarse' 'Coarse batch scoring'
 
-          grep -q 'scoreBatchLongCached' "$MATCHER"
-          grep -q 'referenceStripCache' "$MATCHER"
-          grep -q 'longProfileSimilarity' "$MATCHER"
-          grep -q 'scoreBatchCoarse' "$MATCHER"
+          require_text "$CANDIDATE" 'anchorScore' 'Recognition candidate anchor score'
 
-          grep -q 'anchorScore' "$CANDIDATE"
+          require_text "$ENGINE" 'rodAnchorScore' 'Rod anchor score'
+          require_text "$ENGINE" 'MIN_LONG_ANCHOR_SCORE' 'Minimum long anchor score'
+          require_text "$ENGINE" 'MIN_LONG_ANCHOR_MARGIN' 'Minimum long anchor margin'
+          require_text "$ENGINE" 'ROD_ANCHOR_VISUAL_VERIFIED' 'Rod anchor visual verification rule'
+          require_text "$ENGINE" 'ruleId' 'Recognition decision rule ID'
 
-          grep -q 'rodAnchorScore' "$ENGINE"
-          grep -q 'MIN_LONG_ANCHOR_SCORE' "$ENGINE"
-          grep -q 'MIN_LONG_ANCHOR_MARGIN' "$ENGINE"
-          grep -q 'ROD_ANCHOR_VISUAL_VERIFIED' "$ENGINE"
-          grep -q 'ruleId' "$ENGINE"
+          require_text "$REPO" 'coarseProducts' 'Repository coarse products'
+          require_text "$REPO" 'shortlistedProducts' 'Repository shortlisted products'
+          require_text "$REPO" 'decisionRuleId' 'Repository decision rule ID'
+          require_text "$REPO" 'normalOwnershipConflict' 'Repository normal ownership conflict'
+          require_text "$REPO" 'rodStructureScore' 'Repository rod structure score'
+          require_text "$REPO" 'nativeDeltaMb' 'Repository native memory telemetry'
+          require_text "$REPO" 'totalPssMb' 'Repository total PSS telemetry'
+          require_text "$REPO" 'temporaryCrops' 'Repository temporary crop accounting'
+          require_text "$REPO" 'recycledCrops' 'Repository recycled crop accounting'
+          require_text "$REPO" 'longProposalCount <= 1' 'Long proposal count guard'
+          require_text "$REPO" 'anchorOrder = listOf' 'Anchor order'
+          require_text "$REPO" 'productRanks.take(2)' 'Top-two product ranking'
+          require_text "$REPO" '"LONG_HANDLE", "LONG_SIDE", "LONG_TIP", "LONG_FULL_A", "LONG_FULL_B"' 'Long anchor order entries'
 
-          grep -q 'coarseProducts' "$REPO"
-          grep -q 'shortlistedProducts' "$REPO"
-          grep -q 'decisionRuleId' "$REPO"
-          grep -q 'normalOwnershipConflict' "$REPO"
-          grep -q 'rodStructureScore' "$REPO"
-          grep -q 'nativeDeltaMb' "$REPO"
-          grep -q 'totalPssMb' "$REPO"
-          grep -q 'temporaryCrops' "$REPO"
-          grep -q 'recycledCrops' "$REPO"
-          grep -q 'longProposalCount <= 1' "$REPO"
-          grep -q 'anchorOrder = listOf' "$REPO"
-          grep -q 'productRanks.take(2)' "$REPO"
-          grep -q \
-            '"LONG_HANDLE", "LONG_SIDE", "LONG_TIP", "LONG_FULL_A", "LONG_FULL_B"' \
-            "$REPO"
+          require_text "$AGG" 'laneFamily' 'Aggregator lane family'
+          require_text "$AGG" 'existing.all' 'Aggregator instance separation'
+          require_text "$AGG" 'shouldSuppressDuplicateLong' 'Duplicate long suppression'
+          require_text "$AGG" 'distinctLongInstances' 'Distinct long instances'
+          require_text "$AGG" 'confirmedDistinctParallel' 'Confirmed distinct parallel objects'
 
-          grep -q 'laneFamily' "$AGG"
-          grep -q 'existing.all' "$AGG"
-          grep -q 'shouldSuppressDuplicateLong' "$AGG"
-          grep -q 'distinctLongInstances' "$AGG"
-          grep -q 'confirmedDistinctParallel' "$AGG"
-
-          grep -q 'object ScanCoordinateNormalizer' "$NORMALIZER"
-          grep -q 'rotationDegrees' "$NORMALIZER"
+          require_text "$NORMALIZER" 'object ScanCoordinateNormalizer' 'Coordinate normalizer object'
+          require_text "$NORMALIZER" 'rotationDegrees' 'Coordinate rotation normalization'
 
           echo ""
           echo "========================================"
-          echo "V8.4.10 SOURCE VALIDATION OK"
+          if [ "$FAILURES" -gt 0 ]; then
+            echo "V8.4.10 FIX1 SOURCE VALIDATION FAILED"
+            echo "Critical failures: $FAILURES"
+            echo "========================================"
+            exit 1
+          fi
+
+          echo "V8.4.10 FIX1 SOURCE VALIDATION OK"
+          echo "Phase: 4.3.2.30"
+          echo "Version: 1.4.5 (145)"
+          echo "Package: com.arspos.anglerriausyndicate"
           echo "========================================"
 
       - name: Validate Kotlin source balance
@@ -478,31 +385,21 @@ jobs:
 
                   if c in pairs:
                       stack.append((c, line))
-
                   elif c in reverse:
                       if not stack or stack[-1][0] != reverse[c]:
-                          raise SystemExit(
-                              f"Mismatch in {path}:{line}"
-                          )
+                          raise SystemExit(f"Mismatch in {path}:{line}")
                       stack.pop()
 
                   i += 1
 
               if string or char or block_comment or stack:
-                  raise SystemExit(
-                      f"Unbalanced Kotlin: {path}"
-                  )
+                  raise SystemExit(f"Unbalanced Kotlin: {path}")
 
-          files = list(
-              Path('app/src/main/java').rglob('*.kt')
-          )
-
+          files = list(Path('app/src/main/java').rglob('*.kt'))
           for path in files:
               check(path)
 
-          print(
-              f"KOTLIN BALANCE OK: {len(files)} files"
-          )
+          print(f"KOTLIN BALANCE OK: {len(files)} files")
           PY
 
       - name: Prepare ARS POS official release signing
@@ -512,38 +409,32 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
 
           test -n "$ARS_RELEASE_KEYSTORE_BASE64" || {
-            echo "ERROR: ARS_RELEASE_KEYSTORE_BASE64 belum dibuat."
+            echo "ERROR: GitHub Secret ARS_RELEASE_KEYSTORE_BASE64 belum dibuat."
             exit 1
           }
 
           test -n "$ARS_RELEASE_STORE_PASSWORD" || {
-            echo "ERROR: ARS_RELEASE_STORE_PASSWORD belum dibuat."
+            echo "ERROR: GitHub Secret ARS_RELEASE_STORE_PASSWORD belum dibuat."
             exit 1
           }
 
           test -n "$ARS_RELEASE_KEY_ALIAS" || {
-            echo "ERROR: ARS_RELEASE_KEY_ALIAS belum dibuat."
+            echo "ERROR: GitHub Secret ARS_RELEASE_KEY_ALIAS belum dibuat."
             exit 1
           }
 
           test -n "$ARS_RELEASE_KEY_PASSWORD" || {
-            echo "ERROR: ARS_RELEASE_KEY_PASSWORD belum dibuat."
+            echo "ERROR: GitHub Secret ARS_RELEASE_KEY_PASSWORD belum dibuat."
             exit 1
           }
 
           KEYSTORE="$RUNNER_TEMP/ars-pos-official-release.jks"
-
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
-            | base64 --decode \
-            > "$KEYSTORE"
-
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
-
           test -s "$KEYSTORE"
 
           keytool -list \
@@ -552,10 +443,7 @@ jobs:
             -alias "$ARS_RELEASE_KEY_ALIAS" \
             >/dev/null
 
-          echo \
-            "ARS_RELEASE_STORE_FILE=$KEYSTORE" \
-            >> "$GITHUB_ENV"
-
+          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
           echo "Official release keystore validated."
 
       - name: Clean project
@@ -564,10 +452,8 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle clean \
@@ -580,10 +466,8 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           gradle :app:assembleRelease \
@@ -595,10 +479,8 @@ jobs:
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
-
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -608,26 +490,16 @@ jobs:
             | head -n 1)
 
           test -n "$APK" || {
-            echo "ERROR: APK tidak ditemukan."
+            echo "ERROR: APK tidak ditemukan"
             exit 1
           }
 
-          BADGING=$(
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-              dump badging "$APK" \
-              | head -n 1
-          )
-
+          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1)
           echo "$BADGING"
 
-          echo "$BADGING" | \
-            grep -q "name='com.arspos.anglerriausyndicate'"
-
-          echo "$BADGING" | \
-            grep -q "versionCode='145'"
-
-          echo "$BADGING" | \
-            grep -q "versionName='1.4.5'"
+          echo "$BADGING" | grep -q "name='com.arspos.anglerriausyndicate'"
+          echo "$BADGING" | grep -q "versionCode='145'"
+          echo "$BADGING" | grep -q "versionName='1.4.5'"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -642,60 +514,36 @@ jobs:
             -v 4 \
             "$APK"
 
-          CERT_SHA=$(
-            awk -F': ' \
-              '/Signer #1 certificate SHA-256 digest:/ {
-                  print $2
-                  exit
-              }' \
-              signer-info.txt
-          )
-
+          CERT_SHA=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt)
           test -n "$CERT_SHA" || {
-            echo "ERROR: Signer SHA-256 tidak dapat dibaca."
+            echo "ERROR: Tidak dapat membaca signer SHA-256 dari APK"
             exit 1
           }
 
           test -n "${ARS_RELEASE_CERT_SHA256:-}" || {
-            echo "ERROR: ARS_RELEASE_CERT_SHA256 wajib tersedia."
+            echo "ERROR: GitHub Secret ARS_RELEASE_CERT_SHA256 wajib diisi untuk melindungi update channel."
             exit 1
           }
 
-          NORMALIZED_CERT=$(
-            printf '%s' "$CERT_SHA" \
-              | tr -d ':' \
-              | tr '[:lower:]' '[:upper:]'
-          )
-
-          EXPECTED=$(
-            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
-              | tr -d ':' \
-              | tr '[:lower:]' '[:upper:]'
-          )
+          NORMALIZED_CERT=$(printf '%s' "$CERT_SHA" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':' | tr '[:lower:]' '[:upper:]')
 
           if [ "$NORMALIZED_CERT" != "$EXPECTED" ]; then
-            echo "ERROR: SIGNER BERUBAH."
-            echo "Build dihentikan untuk melindungi update channel."
+            echo "ERROR: SIGNER BERUBAH. Build dihentikan untuk melindungi update channel."
             echo "Current signer: $CERT_SHA"
             exit 1
           fi
 
-          printf \
-            'ARS POS OFFICIAL RELEASE\nVersion: 1.4.5 (145)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
-            "$CERT_SHA" \
-            > SIGNING_FINGERPRINT.txt
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.5 (145)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+            "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
-          echo \
-            "SIGNER_SHA256=$CERT_SHA" \
-            >> "$GITHUB_ENV"
-
-          echo ""
+          echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
           echo "APK identity + signing verified."
 
           {
             echo "### ARS POS Official Release"
             echo "- Version: 1.4.5 (145)"
-            echo "- Phase: 4.3.2.30 / V8.4.10"
+            echo "- Phase: 4.3.2.30 / V8.4.10 FIX1"
             echo "- Package: com.arspos.anglerriausyndicate"
             echo "- Signer SHA-256: $CERT_SHA"
             echo "- Update target: install directly over V8.4.9 Official (do not uninstall)"
@@ -705,7 +553,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
 
           APK=$(find \
@@ -716,16 +563,11 @@ jobs:
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX1-SIGNED.apk"
 
           cp "$APK" "$OUT"
-
-          sha256sum "$OUT" \
-            > "$OUT.sha256"
-
-          cp \
-            SIGNING_FINGERPRINT.txt \
-            app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
+          sha256sum "$OUT" > "$OUT.sha256"
+          cp SIGNING_FINGERPRINT.txt app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
 
           ls -lh \
             "$OUT" \
@@ -735,11 +577,9 @@ jobs:
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-OFFICIAL
-
+          name: ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-FIX1-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX1-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.5-PHASE4.3.2.30-V8.4.10-ANCHOR-PRESERVING-ROD-IDENTITY-FIX1-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
-
           if-no-files-found: error
