@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.27 V8.4.7 Physical Instance Tracking
+    name: Build ARS POS Phase 4.3.2.28 V8.4.8 Multi-Object Instance Separation
     runs-on: ubuntu-latest
 
     steps:
@@ -47,15 +47,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.7 source ZIP
+      - name: Locate V8.4.8 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="./ARS_POS_PHASE4_3_2_27_V8_4_7_PHYSICAL_INSTANCE_TRACKING.zip"
+          ZIP_FILE="./ARS_POS_PHASE4_3_2_28_V8_4_8_MULTI_OBJECT_INSTANCE_SEPARATION.zip"
 
           test -f "$ZIP_FILE" || {
-            echo "ERROR: ZIP V8.4.7 tidak ditemukan: $ZIP_FILE"
+            echo "ERROR: ZIP V8.4.8 tidak ditemukan: $ZIP_FILE"
             find . -maxdepth 3 -type f -iname '*.zip' -print
             exit 1
           }
@@ -66,7 +66,7 @@ jobs:
             'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt'
 
           unzip -l "$ZIP_FILE" | grep -q \
-            'app/src/main/java/com/arspos/anglerriausyndicate/ScanCoordinateNormalizer.kt'
+            'app/src/main/java/com/arspos/anglerriausyndicate/ScanResultAggregator.kt'
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
 
@@ -96,7 +96,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.7 source files
+      - name: Validate V8.4.8 source files
         shell: bash
         run: |
           set -euo pipefail
@@ -142,7 +142,7 @@ jobs:
             "$PKG/data/db/ProductEntity.kt"
             "$PKG/data/db/ProductPhotoEntity.kt"
 
-            "PHASE4_3_2_27_V8_4_7_PHYSICAL_INSTANCE_TRACKING.md"
+            "PHASE4_3_2_28_V8_4_8_MULTI_OBJECT_INSTANCE_SEPARATION.md"
             "ARS_OFFICIAL_RELEASE_SETUP.md"
             "PROJECT_CONTINUITY.md"
           )
@@ -158,10 +158,10 @@ jobs:
           grep -q 'applicationId = "com.arspos.anglerriausyndicate"' \
             app/build.gradle.kts
 
-          grep -q 'versionCode = 142' \
+          grep -q 'versionCode = 143' \
             app/build.gradle.kts
 
-          grep -q 'versionName = "1.4.2"' \
+          grep -q 'versionName = "1.4.3"' \
             app/build.gradle.kts
 
           grep -q 'create("arsOfficialRelease")' \
@@ -179,17 +179,20 @@ jobs:
           UPDATE="$PKG/ArsUpdateChannel.kt"
           REPO="$PKG/data/ProductionRepository.kt"
           SCANNER="$PKG/SmartVisualScanner.kt"
+          MATCHER="$PKG/ProductVisualMatcher.kt"
           AGG="$PKG/ScanResultAggregator.kt"
           PROPOSAL="$PKG/ScanProposal.kt"
           NORMALIZER="$PKG/ScanCoordinateNormalizer.kt"
 
-          grep -q 'Phase 4.3.2.27 V8.4.7' "$MAIN"
-          grep -q 'proposalType' "$MAIN"
-          grep -q 'lineageId' "$MAIN"
+          grep -q 'Phase 4.3.2.28 V8.4.8' "$MAIN"
+          grep -q 'Multi-Object Physical Instance Separation' "$MAIN"
 
-          grep -q 'Phase: 4.3.2.27' "$FLIGHT"
-          grep -q 'V8.4.7 — Physical Instance Tracking' "$FLIGHT"
-          grep -q 'Latest quantity suppressed' "$FLIGHT"
+          grep -q 'Phase: 4.3.2.28' "$FLIGHT"
+          grep -q 'V8.4.8 — Multi-Object Physical Instance Separation' "$FLIGHT"
+          grep -q 'CURRENT BUILD SUMMARY' "$FLIGHT"
+          grep -q 'LIFETIME SUMMARY' "$FLIGHT"
+          grep -q 'Latest bridge proposals suppressed' "$FLIGHT"
+          grep -q 'Latest peak Java heap' "$FLIGHT"
           grep -q 'Current Installed Version' "$FLIGHT"
           grep -q 'Previous Installed Version' "$FLIGHT"
           grep -q 'Signer SHA-256' "$FLIGHT"
@@ -198,37 +201,41 @@ jobs:
           grep -q 'IN_PLACE_UPDATE' "$UPDATE"
           grep -q 'signingSha256' "$UPDATE"
 
-          grep -q 'proposal lineage' "$DEV"
+          grep -q 'physical-instance hint' "$DEV"
+          grep -q 'anti-bridge clustering' "$DEV"
           grep -q 'com.openai.chatgpt' "$DEV"
 
-          grep -q 'detectProposals' "$SCANNER"
-          grep -q 'mergeProposalMetadata' "$SCANNER"
-          grep -q 'TYPE_NORMAL' "$SCANNER"
-          grep -q 'TYPE_LONG' "$SCANNER"
+          grep -q 'TYPE_AMBIGUOUS_CONTAINER' "$PROPOSAL"
+          grep -q 'physicalInstanceHint' "$PROPOSAL"
+          grep -q 'bridgeSuppressed' "$PROPOSAL"
+
+          grep -q 'assignPhysicalHintsAndSuppressBridges' "$SCANNER"
+          grep -q 'isParallelContainer' "$SCANNER"
+          grep -q 'samePhysicalAxis' "$SCANNER"
+          grep -q 'SOURCE_BRIDGE' "$SCANNER"
+
+          grep -q 'laneFamily' "$AGG"
+          grep -q 'existing.all' "$AGG"
+          grep -q 'shouldSuppressDuplicateLong' "$AGG"
+          grep -q 'distinctLongInstances' "$AGG"
+          grep -q 'confirmedDistinctParallel' "$AGG"
+
+          grep -q 'scoreBatchCoarse' "$MATCHER"
+
+          grep -q 'scoreBatchCoarse' "$REPO"
+          grep -q 'perProductLimit' "$REPO"
+          grep -q 'longProposalCount <= 1' "$REPO"
+          grep -q 'SCAN_PROPOSAL_SUPPRESSED' "$REPO"
+          grep -q 'SCAN_MEMORY' "$REPO"
+          grep -q 'physicalInstanceHint' "$REPO"
+          grep -q 'distinctLongInstances' "$REPO"
 
           grep -q 'object ScanCoordinateNormalizer' "$NORMALIZER"
           grep -q 'rotationDegrees' "$NORMALIZER"
 
-          grep -q 'data class ScanProposal' "$PROPOSAL"
-          grep -q 'quantityEligible' "$PROPOSAL"
-          grep -q 'lineageId' "$PROPOSAL"
-
-          grep -q 'typed proposal lanes' "$REPO"
-          grep -q 'normalRefs" to if (longLane) 0' "$REPO"
-          grep -q 'longRefs" to if (longLane) lanePhotos.size else 0' "$REPO"
-          grep -q 'quantityEligible = false' "$REPO"
-          grep -q 'SCAN_QUANTITY_SAFETY' "$REPO"
-          grep -q 'recognitionAccepted' "$REPO"
-          grep -q 'normalizedBounds' "$REPO"
-
-          grep -q 'quantity safety' "$AGG"
-          grep -q 'confirmedDistinctParallel' "$AGG"
-          grep -q 'quantitySuppressed' "$AGG"
-          grep -q 'lineageMerges' "$AGG"
-
           echo ""
           echo "========================================"
-          echo "V8.4.7 SOURCE VALIDATION OK"
+          echo "V8.4.8 SOURCE VALIDATION OK"
           echo "========================================"
 
       - name: Validate Kotlin source balance
@@ -431,8 +438,8 @@ jobs:
           echo "$BADGING"
 
           echo "$BADGING" | grep -q "name='com.arspos.anglerriausyndicate'"
-          echo "$BADGING" | grep -q "versionCode='142'"
-          echo "$BADGING" | grep -q "versionName='1.4.2'"
+          echo "$BADGING" | grep -q "versionCode='143'"
+          echo "$BADGING" | grep -q "versionName='1.4.3'"
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
             verify \
@@ -448,6 +455,7 @@ jobs:
             "$APK"
 
           CERT_SHA=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt)
+
           test -n "$CERT_SHA" || {
             echo "ERROR: Tidak dapat membaca signer SHA-256 dari APK"
             exit 1
@@ -462,7 +470,7 @@ jobs:
             exit 1
           fi
 
-          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.2 (142)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.3 (143)\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
             "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
           echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
@@ -470,11 +478,11 @@ jobs:
 
           {
             echo "### ARS POS Official Release"
-            echo "- Version: 1.4.2 (142)"
-            echo "- Phase: 4.3.2.27 / V8.4.7"
+            echo "- Version: 1.4.3 (143)"
+            echo "- Phase: 4.3.2.28 / V8.4.8"
             echo "- Package: com.arspos.anglerriausyndicate"
             echo "- Signer SHA-256: $CERT_SHA"
-            echo "- Update target: install directly over V8.4.6 Official (do not uninstall)"
+            echo "- Update target: install directly over V8.4.7 Official (do not uninstall)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Rename APK and SHA256
@@ -491,11 +499,12 @@ jobs:
 
           test -n "$APK"
 
-          OUT="app/build/outputs/apk/release/ARS-POS-1.4.2-PHASE4.3.2.27-V8.4.7-PHYSICAL-INSTANCE-TRACKING-SIGNED.apk"
+          OUT="app/build/outputs/apk/release/ARS-POS-1.4.3-PHASE4.3.2.28-V8.4.8-MULTI-OBJECT-INSTANCE-SEPARATION-SIGNED.apk"
 
           cp "$APK" "$OUT"
           sha256sum "$OUT" > "$OUT.sha256"
-          cp SIGNING_FINGERPRINT.txt app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
+          cp SIGNING_FINGERPRINT.txt \
+            app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
 
           ls -lh \
             "$OUT" \
@@ -505,9 +514,9 @@ jobs:
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.4.2-PHASE4.3.2.27-V8.4.7-OFFICIAL
+          name: ARS-POS-1.4.3-PHASE4.3.2.28-V8.4.8-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.2-PHASE4.3.2.27-V8.4.7-PHYSICAL-INSTANCE-TRACKING-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.2-PHASE4.3.2.27-V8.4.7-PHYSICAL-INSTANCE-TRACKING-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.3-PHASE4.3.2.28-V8.4.8-MULTI-OBJECT-INSTANCE-SEPARATION-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.3-PHASE4.3.2.28-V8.4.8-MULTI-OBJECT-INSTANCE-SEPARATION-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
           if-no-files-found: error
