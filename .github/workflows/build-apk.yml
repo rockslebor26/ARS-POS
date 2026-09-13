@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.33 V8.4.13 Physical Object Truth + Trusted Rod Authenticity
+    name: Build ARS POS Phase 4.3.2.34 V8.4.14 Rod Claim + Intersection-Aware Multi-Anchor
     runs-on: ubuntu-latest
 
     steps:
@@ -46,12 +46,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.13 source ZIP
+      - name: Locate V8.4.14 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE=./ARS_POS_PHASE4_3_2_33_V8_4_13_PHYSICAL_OBJECT_TRUTH_TRUSTED_ROD_AUTHENTICITY.zip
+          ZIP_FILE=./ARS_POS_PHASE4_3_2_34_V8_4_14_ROD_CLAIM_INTERSECTION_MULTI_ANCHOR.zip
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Source ZIP tidak ditemukan: $ZIP_FILE"
@@ -95,7 +95,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.13 source
+      - name: Validate V8.4.14 source
         shell: bash
         run: |
           set -euo pipefail
@@ -121,7 +121,7 @@ jobs:
             "$PKG/RodAuthenticityEvaluator.kt"
             "$PKG/RodAnchorExtractor.kt"
             "$PKG/ProductVisualMatcher.kt"
-            "PHASE4_3_2_33_V8_4_13_PHYSICAL_OBJECT_TRUTH_TRUSTED_ROD_AUTHENTICITY.md"
+            "PHASE4_3_2_34_V8_4_14_ROD_CLAIM_INTERSECTION_MULTI_ANCHOR.md"
             "$PKG/data/ProductionRepository.kt"
             "$PKG/data/SmartRecognitionEngine.kt"
             "$PKG/data/RecognitionCandidate.kt"
@@ -135,8 +135,8 @@ jobs:
           done
 
           grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
-          grep -Fq 'versionCode = 148' app/build.gradle.kts
-          grep -Fq 'versionName = "1.4.8"' app/build.gradle.kts
+          grep -Fq 'versionCode = 149' app/build.gradle.kts
+          grep -Fq 'versionName = "1.4.9"' app/build.gradle.kts
           grep -Fq 'create("arsOfficialRelease")' app/build.gradle.kts
           grep -Fq 'releaseSigningAvailable' app/build.gradle.kts
 
@@ -145,47 +145,38 @@ jobs:
             exit 1
           fi
 
-          grep -Fq 'Phase 4.3.2.33 V8.4.13' "$PKG/MainActivity.kt"
-          grep -Fq 'Phase: 4.3.2.33' "$PKG/ArsFlightRecorder.kt"
-
+          grep -Fq 'Phase 4.3.2.34 V8.4.14' "$PKG/MainActivity.kt"
+          grep -Fq 'val rodClaim: Boolean' "$PKG/ScanProposal.kt"
+          grep -Fq 'crossThroughIntersections' "$PKG/RodAuthenticityEvaluator.kt"
+          grep -Fq '(it.trustedRod || it.rodClaim)' "$PKG/CrossCategorySceneFirewall.kt"
+          grep -Fq 'Phase: 4.3.2.34' "$PKG/ArsFlightRecorder.kt"
           grep -Fq 'APP_UPDATE' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'IN_PLACE_UPDATE' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'signingSha256' "$PKG/ArsUpdateChannel.kt"
-
           grep -Fq 'applyCrossLaneSceneGate' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'mergeProposalMetadataDetailed' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'RodAuthenticityEvaluator.apply' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'CrossCategorySceneFirewall.apply' "$PKG/SmartVisualScanner.kt"
-
           grep -Fq 'visualOnlyBlocked' "$PKG/ScanProposal.kt"
-
           grep -Fq 'trustedRod' "$PKG/CrossCategorySceneFirewall.kt"
           grep -Fq 'NORMAL_INTERSECTS_ROD_AXIS' "$PKG/CrossCategorySceneFirewall.kt"
           grep -Fq 'INDEPENDENT_COMPACT_NORMAL' "$PKG/CrossCategorySceneFirewall.kt"
-
           grep -Fq 'orientedLongCrop' "$PKG/SmartVisualScanner.kt"
-
           grep -Fq 'RodPhysicalTrackResolver.resolve' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'axisAngleDeg' "$PKG/ScanProposal.kt"
           grep -Fq 'normalizeAxis' "$PKG/ScanCoordinateNormalizer.kt"
-
           grep -Fq 'rawAxisHypotheses' "$PKG/RodPhysicalTrackResolver.kt"
           grep -Fq 'duplicatePhysicalObjectsPrevented' "$PKG/RodPhysicalTrackResolver.kt"
           grep -Fq 'segmentsIntersectInterior' "$PKG/RodPhysicalTrackResolver.kt"
           grep -Fq 'crossingPairsPreserved' "$PKG/RodPhysicalTrackResolver.kt"
-
           grep -Fq 'AUTH_TRUSTED' "$PKG/RodAuthenticityEvaluator.kt"
           grep -Fq 'branchPenalty' "$PKG/RodAuthenticityEvaluator.kt"
           grep -Fq 'measuredWidthMedianPx' "$PKG/RodAuthenticityEvaluator.kt"
-
           grep -Fq 'scoreBatchRodAnchorAware' "$PKG/ProductVisualMatcher.kt"
           grep -Fq 'scoreBatchPrepared' "$PKG/ProductVisualMatcher.kt"
-
           grep -Fq 'leftEnd' "$PKG/RodAnchorExtractor.kt"
           grep -Fq 'rightEnd' "$PKG/RodAnchorExtractor.kt"
-
           grep -Fq 'LONG_HANDLE' "$PKG/ProductVisualMatcher.kt"
-
           grep -Fq 'rodStructureScore(bitmap, proposal)' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'rawLongHypotheses' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'trustedRodTracks' "$PKG/data/ProductionRepository.kt"
@@ -193,16 +184,14 @@ jobs:
           grep -Fq 'crossCategoryVisualOnlyBlocked' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'nativeGrowthFromBaselineMb' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'angleAwareTracks' "$PKG/data/ProductionRepository.kt"
-
           grep -Fq 'visualOnlyAllowed' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'REJECT_CROSS_CATEGORY_VISUAL_ONLY' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'rodAnchorScore' "$PKG/data/SmartRecognitionEngine.kt"
-
           grep -Fq 'MIN_LONG_VISUAL_MARGIN = 14' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'MIN_LONG_ANCHOR_MARGIN = 8' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'ROD_ANCHOR_VISUAL_VERIFIED' "$PKG/data/SmartRecognitionEngine.kt"
 
-          echo "V8.4.13 source validation OK."
+          echo "V8.4.14 source validation OK."
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -302,7 +291,6 @@ jobs:
                   raise SystemExit(f"Unbalanced Kotlin: {path}")
 
           files = list(Path('app/src/main/java').rglob('*.kt'))
-
           for path in files:
               check(path)
 
@@ -316,36 +304,16 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
 
-          test -n "$ARS_RELEASE_KEYSTORE_BASE64" || {
-            echo "ERROR: ARS_RELEASE_KEYSTORE_BASE64 belum dibuat."
-            exit 1
-          }
-
-          test -n "$ARS_RELEASE_STORE_PASSWORD" || {
-            echo "ERROR: ARS_RELEASE_STORE_PASSWORD belum dibuat."
-            exit 1
-          }
-
-          test -n "$ARS_RELEASE_KEY_ALIAS" || {
-            echo "ERROR: ARS_RELEASE_KEY_ALIAS belum dibuat."
-            exit 1
-          }
-
-          test -n "$ARS_RELEASE_KEY_PASSWORD" || {
-            echo "ERROR: ARS_RELEASE_KEY_PASSWORD belum dibuat."
-            exit 1
-          }
+          test -n "$ARS_RELEASE_KEYSTORE_BASE64" || { echo "ERROR: ARS_RELEASE_KEYSTORE_BASE64 belum dibuat."; exit 1; }
+          test -n "$ARS_RELEASE_STORE_PASSWORD" || { echo "ERROR: ARS_RELEASE_STORE_PASSWORD belum dibuat."; exit 1; }
+          test -n "$ARS_RELEASE_KEY_ALIAS" || { echo "ERROR: ARS_RELEASE_KEY_ALIAS belum dibuat."; exit 1; }
+          test -n "$ARS_RELEASE_KEY_PASSWORD" || { echo "ERROR: ARS_RELEASE_KEY_PASSWORD belum dibuat."; exit 1; }
 
           KEYSTORE=$RUNNER_TEMP/ars-pos-official-release.jks
-
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
-            | base64 --decode \
-            > "$KEYSTORE"
-
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
           test -s "$KEYSTORE"
 
@@ -356,7 +324,6 @@ jobs:
             >/dev/null
 
           echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
-
           echo "Official release keystore validated."
 
       - name: Clean project
@@ -365,15 +332,10 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
-
-          gradle clean \
-            --no-daemon \
-            --stacktrace
+          gradle clean --no-daemon --stacktrace
 
       - name: Build official release APK
         shell: bash
@@ -381,55 +343,41 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
-
         run: |
           set -euo pipefail
-
           cd "$PROJECT_DIR"
-
-          gradle :app:assembleRelease \
-            --no-daemon \
-            --stacktrace \
-            --warning-mode all
+          gradle :app:assembleRelease --no-daemon --stacktrace --warning-mode all
 
       - name: Verify official APK identity and signature
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
-
         run: |
           set -euo pipefail
 
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
-            -type f \
-            -name '*.apk' \
-            -print \
-            -quit)
+          APK=$(find app/build/outputs/apk/release -type f -name '*.apk' -print -quit)
 
           if [ -z "${APK:-}" ]; then
             echo "ERROR: APK tidak ditemukan."
             exit 1
           fi
 
-          BADGING=$(
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" \
-            dump badging "$APK"
-          )
+          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")
 
           if [[ "$BADGING" != *"name='com.arspos.anglerriausyndicate'"* ]]; then
             echo "ERROR: Package APK tidak sesuai."
             exit 1
           fi
 
-          if [[ "$BADGING" != *"versionCode='148'"* ]]; then
-            echo "ERROR: versionCode APK bukan 148."
+          if [[ "$BADGING" != *"versionCode='149'"* ]]; then
+            echo "ERROR: versionCode APK bukan 149."
             exit 1
           fi
 
-          if [[ "$BADGING" != *"versionName='1.4.8'"* ]]; then
-            echo "ERROR: versionName APK bukan 1.4.8."
+          if [[ "$BADGING" != *"versionName='1.4.9'"* ]]; then
+            echo "ERROR: versionName APK bukan 1.4.9."
             exit 1
           fi
 
@@ -440,20 +388,9 @@ jobs:
             "$APK" \
             | tee signer-info.txt
 
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -c \
-            -P 16 \
-            -v 4 \
-            "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 -v 4 "$APK"
 
-          CERT_SHA=$(
-            awk -F': ' \
-            '/Signer #1 certificate SHA-256 digest:/ {
-              print $2
-              exit
-            }' \
-            signer-info.txt
-          )
+          CERT_SHA=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt)
 
           if [ -z "${CERT_SHA:-}" ]; then
             echo "ERROR: Signer SHA-256 tidak dapat dibaca."
@@ -465,51 +402,31 @@ jobs:
             exit 1
           fi
 
-          CURRENT_CERT=$(
-            printf '%s' "$CERT_SHA" \
-            | tr -d ':' \
-            | tr '[:lower:]' '[:upper:]'
-          )
-
-          EXPECTED_CERT=$(
-            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
-            | tr -d ':' \
-            | tr '[:lower:]' '[:upper:]'
-          )
+          CURRENT_CERT=$(printf '%s' "$CERT_SHA" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+          EXPECTED_CERT=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':' | tr '[:lower:]' '[:upper:]')
 
           if [ "$CURRENT_CERT" != "$EXPECTED_CERT" ]; then
-            echo "ERROR: SIGNER BERUBAH dibanding ARS_RELEASE_CERT_SHA256."
-            echo "Build dihentikan."
+            echo "ERROR: SIGNER BERUBAH dibanding ARS_RELEASE_CERT_SHA256. Build dihentikan."
             echo "Current signer: $CERT_SHA"
             exit 1
           fi
 
-          # Defense in depth:
-          # ARS POS Official Release certificate observed across
-          # 1.4.5/145, 1.4.6/146, and 1.4.7/147 must remain identical.
           OFFICIAL_CERT="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
-
           if [ "$CURRENT_CERT" != "$OFFICIAL_CERT" ]; then
-            echo "ERROR: PRIORITAS TINGGI DISTRIBUSI."
-            echo "Signer bukan ARS POS Official Release yang diharapkan."
-            echo "Current signer: $CERT_SHA"
+            echo "ERROR: signer bukan ARS POS Official Release."
             exit 1
           fi
 
-          printf \
-            'ARS POS OFFICIAL RELEASE\nVersion: 1.4.8 (148)\nPhase: 4.3.2.33 / V8.4.13\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
-            "$CERT_SHA" \
-            > SIGNING_FINGERPRINT.txt
-
-          echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.4.9 (149)\nPhase: 4.3.2.34 / V8.4.14\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+            "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
           {
             echo "### ARS POS Official Release"
-            echo "- Version: 1.4.8 (148)"
-            echo "- Phase: 4.3.2.33 / V8.4.13"
+            echo "- Version: 1.4.9 (149)"
+            echo "- Phase: 4.3.2.34 / V8.4.14"
             echo "- Package: com.arspos.anglerriausyndicate"
             echo "- Signer SHA-256: $CERT_SHA"
-            echo "- Update target: install directly over V8.4.12 / 1.4.7 (147) Official (do not uninstall)"
+            echo "- Update target: install directly over V8.4.13 / 1.4.8 (148) Official (do not uninstall)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Package APK and SHA256
@@ -519,51 +436,25 @@ jobs:
 
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release \
-            -type f \
-            -name '*.apk' \
-            -print \
-            -quit)
-
-          if [ -z "${APK:-}" ]; then
-            echo "ERROR: Release APK tidak ditemukan."
-            exit 1
-          fi
-
+          APK=$(find app/build/outputs/apk/release -type f -name '*.apk' -print -quit)
           OUTPUT_DIR=app/build/outputs/apk/release
-          OUTPUT_NAME=ARS-POS-1.4.8-V8.4.13-SIGNED.apk
+          OUTPUT_NAME=ARS-POS-1.4.9-V8.4.14-SIGNED.apk
           OUT=$OUTPUT_DIR/$OUTPUT_NAME
 
           cp "$APK" "$OUT"
-
           sha256sum "$OUT" > "$OUT.sha256"
-
-          if [ ! -f SIGNING_FINGERPRINT.txt ]; then
-            echo "ERROR: SIGNING_FINGERPRINT.txt tidak ditemukan."
-            exit 1
-          fi
-
-          cp \
-            SIGNING_FINGERPRINT.txt \
-            "$OUTPUT_DIR/SIGNING_FINGERPRINT.txt"
+          cp SIGNING_FINGERPRINT.txt "$OUTPUT_DIR/SIGNING_FINGERPRINT.txt"
 
           test -s "$OUT"
           test -s "$OUT.sha256"
           test -s "$OUTPUT_DIR/SIGNING_FINGERPRINT.txt"
 
-          echo "APK package ready: $OUT"
-
-          ls -lh \
-            "$OUT" \
-            "$OUT.sha256" \
-            "$OUTPUT_DIR/SIGNING_FINGERPRINT.txt"
-
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.4.8-PHASE4.3.2.33-V8.4.13-OFFICIAL
+          name: ARS-POS-1.4.9-PHASE4.3.2.34-V8.4.14-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.8-V8.4.13-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.8-V8.4.13-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.9-V8.4.14-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.4.9-V8.4.14-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
           if-no-files-found: error
