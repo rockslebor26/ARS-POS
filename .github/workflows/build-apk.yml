@@ -1,4 +1,4 @@
-name: ARS POS Official Release
+name: ARS POS V8.4.17 Stable Release
 
 on:
   workflow_dispatch:
@@ -35,6 +35,7 @@ jobs:
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
+
           test -f "$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
           test -f "$ANDROID_HOME/build-tools/35.0.0/zipalign"
@@ -44,29 +45,51 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.17 source ZIP
+      - name: Locate verified V8.4.17 Stable Release source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE=./ARS_POS_PHASE4_3_2_37_V8_4_17_EVIDENCE_TRACK_RESCUE_CASHIER_REVIEW.zip
+          ZIP_FILE=./ARS_POS_V8_4_17_STABLE_RELEASE.zip
+          EXPECTED_SHA256=163f8b711f3f227e624d0f525c59835bacbbae1c355435d132903a49b0112d3c
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Source ZIP tidak ditemukan: $ZIP_FILE"
-            echo "ZIP yang tersedia di repository:"
-            find . -maxdepth 3 -type f -iname '*.zip' -print || true
+            echo "Upload file ARS_POS_V8_4_17_STABLE_RELEASE.zip ke root repository."
+            echo "ZIP yang tersedia:"
+            find . -maxdepth 2 -type f -iname '*.zip' -print || true
+            exit 1
+          fi
+
+          ACTUAL_SHA256=$(sha256sum "$ZIP_FILE" | awk '{print $1}')
+
+          echo "Selected source: $ZIP_FILE"
+          echo "Source SHA-256: $ACTUAL_SHA256"
+
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "ERROR: SHA-256 source ZIP tidak sesuai."
+            echo "Expected: $EXPECTED_SHA256"
+            echo "Actual  : $ACTUAL_SHA256"
             exit 1
           fi
 
           unzip -t "$ZIP_FILE" >/dev/null
           unzip -Z1 "$ZIP_FILE" > "$RUNNER_TEMP/ars-pos-zip-list.txt"
 
-          grep -Fq 'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt' "$RUNNER_TEMP/ars-pos-zip-list.txt"
-          grep -Fq 'app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt' "$RUNNER_TEMP/ars-pos-zip-list.txt"
-          grep -Fq 'app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt' "$RUNNER_TEMP/ars-pos-zip-list.txt"
+          for REQUIRED_ENTRY in \
+            'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt' \
+            'app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt' \
+            'app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt' \
+            'app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt'
+          do
+            if ! grep -Fq "$REQUIRED_ENTRY" "$RUNNER_TEMP/ars-pos-zip-list.txt"; then
+              echo "ERROR: ZIP tidak lengkap. Missing: $REQUIRED_ENTRY"
+              exit 1
+            fi
+          done
 
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
-          echo "Source ZIP OK: $ZIP_FILE"
+          echo "V8.4.17 stable source ZIP verified."
 
       - name: Extract ARS POS project
         shell: bash
@@ -75,6 +98,7 @@ jobs:
 
           rm -rf extracted
           mkdir -p extracted
+
           unzip -q -o "$ZIP_FILE" -d extracted
 
       - name: Locate Gradle project
@@ -94,7 +118,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.17 source and safety invariants
+      - name: Validate V8.4.17 Stable Release source and safety invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -102,6 +126,30 @@ jobs:
           cd "$PROJECT_DIR"
 
           PKG=app/src/main/java/com/arspos/anglerriausyndicate
+
+          require_file() {
+            local file="$1"
+
+            if [ ! -f "$file" ]; then
+              echo "ERROR [MISSING_FILE]: $file"
+              exit 1
+            fi
+          }
+
+          require_literal() {
+            local label="$1"
+            local literal="$2"
+            local file="$3"
+
+            if ! grep -Fq "$literal" "$file"; then
+              echo "ERROR [$label]"
+              echo "File    : $file"
+              echo "Expected: $literal"
+              exit 1
+            fi
+
+            echo "OK [$label]"
+          }
 
           REQUIRED=(
             settings.gradle.kts
@@ -131,78 +179,240 @@ jobs:
             PHASE4_3_2_37_V8_4_17_EVIDENCE_TRACK_RESCUE_CASHIER_REVIEW.md
           )
 
-          for FILE in "${REQUIRED[@]}"; do
-            test -f "$FILE" || {
-              echo "ERROR: Required file missing: $FILE"
-              exit 1
-            }
+          for FILE in "${REQUIRED[@]}"
+          do
+            require_file "$FILE"
           done
 
-          # Official distribution identity
-          grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
-          grep -Fq 'versionCode = 152' app/build.gradle.kts
-          grep -Fq 'versionName = "1.5.2"' app/build.gradle.kts
-          grep -Fq 'create("arsOfficialRelease")' app/build.gradle.kts
-          grep -Fq 'releaseSigningAvailable' app/build.gradle.kts
+          require_literal \
+            PACKAGE_ID \
+            'applicationId = "com.arspos.anglerriausyndicate"' \
+            app/build.gradle.kts
 
-          if grep -Fq 'signingConfig = signingConfigs.getByName("debug")' app/build.gradle.kts; then
-            echo "ERROR: Release APK masih menggunakan debug signing."
+          require_literal \
+            VERSION_CODE \
+            'versionCode = 152' \
+            app/build.gradle.kts
+
+          require_literal \
+            VERSION_NAME \
+            'versionName = "1.5.2"' \
+            app/build.gradle.kts
+
+          require_literal \
+            OFFICIAL_SIGNING \
+            'create("arsOfficialRelease")' \
+            app/build.gradle.kts
+
+          require_literal \
+            RELEASE_SIGNING_AVAILABLE \
+            'releaseSigningAvailable' \
+            app/build.gradle.kts
+
+          if grep -Fq \
+            'signingConfig = signingConfigs.getByName("debug")' \
+            app/build.gradle.kts
+          then
+            echo "ERROR [DEBUG_SIGNING]: Release APK masih menggunakan debug signing."
             exit 1
           fi
 
-          # Evidence Integrity
-          grep -Fq 'snapshotBitmap(scene, mutable = true)' "$PKG/ArsVisualEvidenceRecorder.kt"
-          grep -Fq 'artifactType" to "PHYSICAL_TRACK_OVERLAY' "$PKG/ArsVisualEvidenceRecorder.kt"
-          grep -Fq 'artifactType" to "FINAL_PROPOSAL_OVERLAY' "$PKG/ArsVisualEvidenceRecorder.kt"
-          grep -Fq 'buildSessionDiagnosticPackage' "$PKG/ArsVisualEvidenceRecorder.kt"
-          grep -Fq 'Evidence recorder errors' "$PKG/ArsFlightRecorder.kt"
+          require_literal \
+            EVIDENCE_MUTABLE_BITMAP \
+            'snapshotBitmap(scene, mutable = true)' \
+            "$PKG/ArsVisualEvidenceRecorder.kt"
 
-          # Physical-track truth
-          grep -Fq 'REJECTED-${index + 1}-' "$PKG/RodPhysicalTrackResolver.kt"
-          grep -Fq 'crossingContinuity' "$PKG/RodAuthenticityEvaluator.kt"
-          grep -Fq 'crossThroughIntersections' "$PKG/RodAuthenticityEvaluator.kt"
-          grep -Fq 'trueBranchIntersections' "$PKG/RodAuthenticityEvaluator.kt"
+          require_literal \
+            EVIDENCE_TRACK_OVERLAY \
+            'artifactType" to "PHYSICAL_TRACK_OVERLAY' \
+            "$PKG/ArsVisualEvidenceRecorder.kt"
 
-          # V8.4.17 FIX1:
-          # Rescue Gate state must survive merge block scope.
-          grep -Fq 'var trustedRodTracksAfterMerge = 0' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'var uncertainRodTracksAfterMerge = 0' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'val rescueBlockingTrustedRodTracks = trustedRodTracksAfterMerge' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'val uncertainRodTracksForRescue = uncertainRodTracksAfterMerge' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'TRUSTED_ROD_TRACK_PRESENT' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'quantityEligible = false' "$PKG/data/ProductionRepository.kt"
+          require_literal \
+            EVIDENCE_PROPOSAL_OVERLAY \
+            'artifactType" to "FINAL_PROPOSAL_OVERLAY' \
+            "$PKG/ArsVisualEvidenceRecorder.kt"
 
-          # Cashier scan review
-          grep -Fq 'InteractiveScanPreview' "$PKG/MainActivity.kt"
-          grep -Fq 'TINJAU JUMLAH & TAMBAH' "$PKG/MainActivity.kt"
-          grep -Fq 'DETAIL DIAGNOSTIK' "$PKG/MainActivity.kt"
-          grep -Fq 'LAPORKAN HASIL SCAN BERGAMBAR' "$PKG/MainActivity.kt"
-          grep -Fq 'commitScanQuantities' "$PKG/PosViewModel.kt"
-          grep -Fq 'committedScanSessions.contains(session)' "$PKG/PosViewModel.kt"
-          grep -Fq 'SCAN_CART_COMMIT_BLOCKED' "$PKG/PosViewModel.kt"
-          grep -Fq 'shareCurrentScanEvidence' "$PKG/ArsDevCenter.kt"
+          require_literal \
+            EVIDENCE_PACKAGE \
+            'buildSessionDiagnosticPackage' \
+            "$PKG/ArsVisualEvidenceRecorder.kt"
 
-          # Threshold recognition MUST remain unchanged
-          grep -Fq 'ACCEPT_VISUAL_ONLY = 80' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'ACCEPT_LONG_VISUAL_ONLY = 72' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'MIN_VISUAL_MARGIN = 15' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'MIN_LONG_VISUAL_MARGIN = 14' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'MIN_TEXT_GATE = 58' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'MIN_LONG_ANCHOR_SCORE = 55' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'MIN_LONG_ANCHOR_MARGIN = 8' "$PKG/data/SmartRecognitionEngine.kt"
-          grep -Fq 'REJECT_CROSS_CATEGORY_VISUAL_ONLY' "$PKG/data/SmartRecognitionEngine.kt"
+          require_literal \
+            EVIDENCE_ERROR_COUNTER \
+            'Evidence recorder errors' \
+            "$PKG/ArsFlightRecorder.kt"
 
-          # Existing pipeline safety
-          grep -Fq 'RodPhysicalTrackResolver.resolve' "$PKG/SmartVisualScanner.kt"
-          grep -Fq 'RodAuthenticityEvaluator.apply' "$PKG/SmartVisualScanner.kt"
-          grep -Fq 'CrossCategorySceneFirewall.apply' "$PKG/SmartVisualScanner.kt"
-          grep -Fq 'applyCrossLaneSceneGate' "$PKG/SmartVisualScanner.kt"
-          grep -Fq 'recordDecision' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'recordTrackOverlay' "$PKG/data/ProductionRepository.kt"
-          grep -Fq 'APP_UPDATE' "$PKG/ArsUpdateChannel.kt"
-          grep -Fq 'IN_PLACE_UPDATE' "$PKG/ArsUpdateChannel.kt"
+          require_literal \
+            REJECTED_TRACK_NAMESPACE \
+            'REJECTED-${index + 1}-' \
+            "$PKG/RodPhysicalTrackResolver.kt"
 
-          echo "V8.4.17 source and safety validation OK."
+          require_literal \
+            CROSSING_CONTINUITY \
+            'crossingContinuity' \
+            "$PKG/RodAuthenticityEvaluator.kt"
+
+          require_literal \
+            CROSS_THROUGH \
+            'crossThroughIntersections' \
+            "$PKG/RodAuthenticityEvaluator.kt"
+
+          require_literal \
+            TRUE_BRANCH \
+            'trueBranchIntersections' \
+            "$PKG/RodAuthenticityEvaluator.kt"
+
+          require_literal \
+            FIX1_TRUSTED_STATE \
+            'var trustedRodTracksAfterMerge = 0' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            FIX1_UNCERTAIN_STATE \
+            'var uncertainRodTracksAfterMerge = 0' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            FIX1_RESCUE_TRUSTED \
+            'val rescueBlockingTrustedRodTracks = trustedRodTracksAfterMerge' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            FIX1_RESCUE_UNCERTAIN \
+            'val uncertainRodTracksForRescue = uncertainRodTracksAfterMerge' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            RESCUE_TRUSTED_BLOCKER \
+            'TRUSTED_ROD_TRACK_PRESENT' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            RESCUE_NO_QUANTITY \
+            'quantityEligible = false' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            CASHIER_INTERACTIVE_BOX \
+            'InteractiveScanPreview' \
+            "$PKG/MainActivity.kt"
+
+          require_literal \
+            CASHIER_QUANTITY_REVIEW \
+            'TINJAU JUMLAH & TAMBAH' \
+            "$PKG/MainActivity.kt"
+
+          require_literal \
+            DIAGNOSTIC_DETAIL \
+            'DETAIL DIAGNOSTIK' \
+            "$PKG/MainActivity.kt"
+
+          require_literal \
+            VISUAL_REPORT \
+            'LAPORKAN HASIL SCAN BERGAMBAR' \
+            "$PKG/MainActivity.kt"
+
+          require_literal \
+            QUANTITY_COMMIT \
+            'commitScanQuantities' \
+            "$PKG/PosViewModel.kt"
+
+          require_literal \
+            SESSION_DEDUP \
+            'committedScanSessions.contains(session)' \
+            "$PKG/PosViewModel.kt"
+
+          require_literal \
+            DUPLICATE_COMMIT_EVENT \
+            'SCAN_CART_COMMIT_BLOCKED' \
+            "$PKG/PosViewModel.kt"
+
+          require_literal \
+            SHARE_SESSION_EVIDENCE \
+            'shareCurrentScanEvidence' \
+            "$PKG/ArsDevCenter.kt"
+
+          require_literal \
+            THRESHOLD_NORMAL \
+            'ACCEPT_VISUAL_ONLY = 80' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            THRESHOLD_LONG \
+            'ACCEPT_LONG_VISUAL_ONLY = 72' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            THRESHOLD_MARGIN \
+            'MIN_VISUAL_MARGIN = 15' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            THRESHOLD_LONG_MARGIN \
+            'MIN_LONG_VISUAL_MARGIN = 14' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            THRESHOLD_TEXT \
+            'MIN_TEXT_GATE = 58' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            THRESHOLD_ANCHOR \
+            'MIN_LONG_ANCHOR_SCORE = 55' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            THRESHOLD_ANCHOR_MARGIN \
+            'MIN_LONG_ANCHOR_MARGIN = 8' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            CROSS_CATEGORY_RULE \
+            'REJECT_CROSS_CATEGORY_VISUAL_ONLY' \
+            "$PKG/data/SmartRecognitionEngine.kt"
+
+          require_literal \
+            PIPELINE_PHYSICAL_RESOLVE \
+            'RodPhysicalTrackResolver.resolve' \
+            "$PKG/SmartVisualScanner.kt"
+
+          require_literal \
+            PIPELINE_AUTHENTICITY \
+            'RodAuthenticityEvaluator.apply' \
+            "$PKG/SmartVisualScanner.kt"
+
+          require_literal \
+            PIPELINE_CATEGORY_FIREWALL \
+            'CrossCategorySceneFirewall.apply' \
+            "$PKG/SmartVisualScanner.kt"
+
+          require_literal \
+            PIPELINE_CROSS_LANE \
+            'applyCrossLaneSceneGate' \
+            "$PKG/SmartVisualScanner.kt"
+
+          require_literal \
+            PIPELINE_DECISION_EVIDENCE \
+            'recordDecision' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            PIPELINE_TRACK_EVIDENCE \
+            'recordTrackOverlay' \
+            "$PKG/data/ProductionRepository.kt"
+
+          require_literal \
+            UPDATE_EVENT \
+            'APP_UPDATE' \
+            "$PKG/ArsUpdateChannel.kt"
+
+          require_literal \
+            UPDATE_IN_PLACE \
+            'IN_PLACE_UPDATE' \
+            "$PKG/ArsUpdateChannel.kt"
+
+          echo "V8.4.17 Stable Release source and safety validation OK."
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -251,11 +461,16 @@ jobs:
                       continue
 
                   if block_comment:
-                      if c == '*' and i + 1 < len(text) and text[i + 1] == '/':
+                      if (
+                          c == '*'
+                          and i + 1 < len(text)
+                          and text[i + 1] == '/'
+                      ):
                           block_comment = False
                           i += 2
                       else:
                           i += 1
+
                       continue
 
                   if string:
@@ -280,12 +495,20 @@ jobs:
                       i += 1
                       continue
 
-                  if c == '/' and i + 1 < len(text) and text[i + 1] == '/':
+                  if (
+                      c == '/'
+                      and i + 1 < len(text)
+                      and text[i + 1] == '/'
+                  ):
                       line_comment = True
                       i += 2
                       continue
 
-                  if c == '/' and i + 1 < len(text) and text[i + 1] == '*':
+                  if (
+                      c == '/'
+                      and i + 1 < len(text)
+                      and text[i + 1] == '*'
+                  ):
                       block_comment = True
                       i += 2
                       continue
@@ -304,7 +527,10 @@ jobs:
                       stack.append((c, line))
 
                   elif c in reverse:
-                      if not stack or stack[-1][0] != reverse[c]:
+                      if (
+                          not stack
+                          or stack[-1][0] != reverse[c]
+                      ):
                           raise SystemExit(
                               f"Mismatch in {path}:{line}"
                           )
