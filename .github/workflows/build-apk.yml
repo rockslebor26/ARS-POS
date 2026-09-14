@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ARS POS Phase 4.3.2.35 V8.4.15 Identity Safety + Crop OCR + Track Audit
+    name: Build ARS POS Phase 4.3.2.36 V8.4.16 Visual Evidence Recorder + Diagnostic Scan Package
     runs-on: ubuntu-latest
 
     steps:
@@ -46,12 +46,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Locate V8.4.15 source ZIP
+      - name: Locate V8.4.16 source ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE=./ARS_POS_PHASE4_3_2_35_V8_4_15_IDENTITY_SAFETY.zip
+          ZIP_FILE=./ARS_POS_PHASE4_3_2_36_V8_4_16_VISUAL_EVIDENCE_DIAGNOSTIC_PACKAGE.zip
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Source ZIP tidak ditemukan: $ZIP_FILE"
@@ -95,7 +95,7 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
-      - name: Validate V8.4.15 source
+      - name: Validate V8.4.16 source
         shell: bash
         run: |
           set -euo pipefail
@@ -111,7 +111,9 @@ jobs:
             app/build.gradle.kts
             app/src/main/AndroidManifest.xml
             "$PKG/MainActivity.kt"
+            "$PKG/ArsDevCenter.kt"
             "$PKG/ArsFlightRecorder.kt"
+            "$PKG/ArsVisualEvidenceRecorder.kt"
             "$PKG/ArsUpdateChannel.kt"
             "$PKG/SmartVisualScanner.kt"
             "$PKG/LongObjectAnalyzer.kt"
@@ -121,7 +123,7 @@ jobs:
             "$PKG/RodAuthenticityEvaluator.kt"
             "$PKG/RodAnchorExtractor.kt"
             "$PKG/ProductVisualMatcher.kt"
-            "PHASE4_3_2_35_V8_4_15_IDENTITY_SAFETY.md"
+            "PHASE4_3_2_36_V8_4_16_VISUAL_EVIDENCE_DIAGNOSTIC_PACKAGE.md"
             "$PKG/data/ProductionRepository.kt"
             "$PKG/data/SmartRecognitionEngine.kt"
             "$PKG/data/RecognitionCandidate.kt"
@@ -135,8 +137,8 @@ jobs:
           done
 
           grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
-          grep -Fq 'versionCode = 150' app/build.gradle.kts
-          grep -Fq 'versionName = "1.5.0"' app/build.gradle.kts
+          grep -Fq 'versionCode = 151' app/build.gradle.kts
+          grep -Fq 'versionName = "1.5.1"' app/build.gradle.kts
           grep -Fq 'create("arsOfficialRelease")' app/build.gradle.kts
           grep -Fq 'releaseSigningAvailable' app/build.gradle.kts
 
@@ -145,11 +147,26 @@ jobs:
             exit 1
           fi
 
-          grep -Fq 'Phase 4.3.2.35 V8.4.15' "$PKG/MainActivity.kt"
+          grep -Fq 'Phase 4.3.2.36 V8.4.16' "$PKG/MainActivity.kt"
+          grep -Fq 'Visual Evidence Recorder + Diagnostic Scan Package' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'captureTrackAudit' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'recordTrackOverlay' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'recordDecision' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'MAX_TOTAL_BYTES = 35L * 1024L * 1024L' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'exportPackage' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'buildDiagnosticPackage' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'MAX_SESSIONS = 20' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'JPEG_QUALITY = 82' "$PKG/ArsVisualEvidenceRecorder.kt"
+          grep -Fq 'CHATGPT + EVIDENCE ZIP' "$PKG/ArsDevCenter.kt"
+          grep -Fq 'diagnostic_exports' app/src/main/res/xml/file_paths.xml
+          grep -Fq 'ArsVisualEvidenceRecorder.beginSession' "$PKG/MainActivity.kt"
+          grep -Fq 'ArsVisualEvidenceRecorder.captureTrackAudit' "$PKG/SmartVisualScanner.kt"
+          grep -Fq 'ArsVisualEvidenceRecorder.recordTrackOverlay' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'ArsVisualEvidenceRecorder.recordDecision' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'val rodClaim: Boolean' "$PKG/ScanProposal.kt"
           grep -Fq 'crossThroughIntersections' "$PKG/RodAuthenticityEvaluator.kt"
           grep -Fq '(it.trustedRod || it.rodClaim)' "$PKG/CrossCategorySceneFirewall.kt"
-          grep -Fq 'Phase: 4.3.2.35' "$PKG/ArsFlightRecorder.kt"
+          grep -Fq 'Phase: 4.3.2.36' "$PKG/ArsFlightRecorder.kt"
           grep -Fq 'APP_UPDATE' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'IN_PLACE_UPDATE' "$PKG/ArsUpdateChannel.kt"
           grep -Fq 'signingSha256' "$PKG/ArsUpdateChannel.kt"
@@ -192,7 +209,7 @@ jobs:
           grep -Fq 'REJECT_NORMAL_REQUIRES_IDENTITY' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'ROD_ANCHOR_VISUAL_VERIFIED' "$PKG/data/SmartRecognitionEngine.kt"
 
-          echo "V8.4.15 source validation OK."
+          echo "V8.4.16 source validation OK."
 
       - name: Validate Kotlin source balance
         shell: bash
@@ -372,13 +389,13 @@ jobs:
             exit 1
           fi
 
-          if [[ "$BADGING" != *"versionCode='150'"* ]]; then
-            echo "ERROR: versionCode APK bukan 150."
+          if [[ "$BADGING" != *"versionCode='151'"* ]]; then
+            echo "ERROR: versionCode APK bukan 151."
             exit 1
           fi
 
-          if [[ "$BADGING" != *"versionName='1.5.0'"* ]]; then
-            echo "ERROR: versionName APK bukan 1.5.0."
+          if [[ "$BADGING" != *"versionName='1.5.1'"* ]]; then
+            echo "ERROR: versionName APK bukan 1.5.1."
             exit 1
           fi
 
@@ -412,27 +429,26 @@ jobs:
             exit 1
           fi
 
-          # Defense in depth: official ARS POS production certificate observed
-          # across 1.4.5/145, 1.4.6/146 and 1.4.7/147 must remain identical.
           OFFICIAL_CERT="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
+
           if [ "$CURRENT_CERT" != "$OFFICIAL_CERT" ]; then
             echo "ERROR: PRIORITAS TINGGI DISTRIBUSI — signer bukan ARS POS Official Release yang diharapkan."
             echo "Current signer: $CERT_SHA"
             exit 1
           fi
 
-          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.5.0 (150)\nPhase: 4.3.2.35 / V8.4.15\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
+          printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.5.1 (151)\nPhase: 4.3.2.36 / V8.4.16\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
             "$CERT_SHA" > SIGNING_FINGERPRINT.txt
 
           echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
 
           {
             echo "### ARS POS Official Release"
-            echo "- Version: 1.5.0 (150)"
-            echo "- Phase: 4.3.2.35 / V8.4.15"
+            echo "- Version: 1.5.1 (151)"
+            echo "- Phase: 4.3.2.36 / V8.4.16"
             echo "- Package: com.arspos.anglerriausyndicate"
             echo "- Signer SHA-256: $CERT_SHA"
-            echo "- Update target: install directly over V8.4.14 / 1.4.9 (149) Official (do not uninstall)"
+            echo "- Update target: install directly over V8.4.15 / 1.5.0 (150) Official (do not uninstall)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Package APK and SHA256
@@ -450,7 +466,7 @@ jobs:
           fi
 
           OUTPUT_DIR=app/build/outputs/apk/release
-          OUTPUT_NAME=ARS-POS-1.5.0-V8.4.15-SIGNED.apk
+          OUTPUT_NAME=ARS-POS-1.5.1-V8.4.16-SIGNED.apk
           OUT=$OUTPUT_DIR/$OUTPUT_NAME
 
           cp "$APK" "$OUT"
@@ -473,9 +489,9 @@ jobs:
       - name: Upload official signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARS-POS-1.5.0-PHASE4.3.2.35-V8.4.15-OFFICIAL
+          name: ARS-POS-1.5.1-PHASE4.3.2.36-V8.4.16-OFFICIAL
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.5.0-V8.4.15-SIGNED.apk
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.5.0-V8.4.15-SIGNED.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.5.1-V8.4.16-SIGNED.apk
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.5.1-V8.4.16-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
           if-no-files-found: error
