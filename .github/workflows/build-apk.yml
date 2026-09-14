@@ -48,18 +48,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           ZIP_FILE=./ARS_POS_PHASE4_3_2_37_V8_4_17_EVIDENCE_TRACK_RESCUE_CASHIER_REVIEW.zip
+
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Source ZIP tidak ditemukan: $ZIP_FILE"
             echo "ZIP yang tersedia di repository:"
             find . -maxdepth 3 -type f -iname '*.zip' -print || true
             exit 1
           fi
+
           unzip -t "$ZIP_FILE" >/dev/null
           unzip -Z1 "$ZIP_FILE" > "$RUNNER_TEMP/ars-pos-zip-list.txt"
+
           grep -Fq 'app/src/main/java/com/arspos/anglerriausyndicate/ScanProposal.kt' "$RUNNER_TEMP/ars-pos-zip-list.txt"
           grep -Fq 'app/src/main/java/com/arspos/anglerriausyndicate/LongObjectAnalyzer.kt' "$RUNNER_TEMP/ars-pos-zip-list.txt"
           grep -Fq 'app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt' "$RUNNER_TEMP/ars-pos-zip-list.txt"
+
           echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
           echo "Source ZIP OK: $ZIP_FILE"
 
@@ -67,6 +72,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           rm -rf extracted
           mkdir -p extracted
           unzip -q -o "$ZIP_FILE" -d extracted
@@ -75,12 +81,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           SETTINGS=$(find extracted -type f -name 'settings.gradle.kts' -print -quit)
+
           if [ -z "${SETTINGS:-}" ]; then
             echo "ERROR: settings.gradle.kts tidak ditemukan."
             exit 1
           fi
+
           PROJECT_DIR=$(dirname "$SETTINGS")
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Gradle project: $PROJECT_DIR"
 
@@ -88,7 +98,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
+
           PKG=app/src/main/java/com/arspos/anglerriausyndicate
 
           REQUIRED=(
@@ -126,6 +138,7 @@ jobs:
             }
           done
 
+          # Official distribution identity
           grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' app/build.gradle.kts
           grep -Fq 'versionCode = 152' app/build.gradle.kts
           grep -Fq 'versionName = "1.5.2"' app/build.gradle.kts
@@ -137,21 +150,29 @@ jobs:
             exit 1
           fi
 
+          # Evidence Integrity
           grep -Fq 'snapshotBitmap(scene, mutable = true)' "$PKG/ArsVisualEvidenceRecorder.kt"
           grep -Fq 'artifactType" to "PHYSICAL_TRACK_OVERLAY' "$PKG/ArsVisualEvidenceRecorder.kt"
           grep -Fq 'artifactType" to "FINAL_PROPOSAL_OVERLAY' "$PKG/ArsVisualEvidenceRecorder.kt"
           grep -Fq 'buildSessionDiagnosticPackage' "$PKG/ArsVisualEvidenceRecorder.kt"
           grep -Fq 'Evidence recorder errors' "$PKG/ArsFlightRecorder.kt"
 
+          # Physical-track truth
           grep -Fq 'REJECTED-${index + 1}-' "$PKG/RodPhysicalTrackResolver.kt"
           grep -Fq 'crossingContinuity' "$PKG/RodAuthenticityEvaluator.kt"
           grep -Fq 'crossThroughIntersections' "$PKG/RodAuthenticityEvaluator.kt"
           grep -Fq 'trueBranchIntersections' "$PKG/RodAuthenticityEvaluator.kt"
 
-          grep -Fq 'rescueBlockingTrustedRodTracks' "$PKG/data/ProductionRepository.kt"
+          # V8.4.17 FIX1:
+          # Rescue Gate state must survive merge block scope.
+          grep -Fq 'var trustedRodTracksAfterMerge = 0' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'var uncertainRodTracksAfterMerge = 0' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'val rescueBlockingTrustedRodTracks = trustedRodTracksAfterMerge' "$PKG/data/ProductionRepository.kt"
+          grep -Fq 'val uncertainRodTracksForRescue = uncertainRodTracksAfterMerge' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'TRUSTED_ROD_TRACK_PRESENT' "$PKG/data/ProductionRepository.kt"
           grep -Fq 'quantityEligible = false' "$PKG/data/ProductionRepository.kt"
 
+          # Cashier scan review
           grep -Fq 'InteractiveScanPreview' "$PKG/MainActivity.kt"
           grep -Fq 'TINJAU JUMLAH & TAMBAH' "$PKG/MainActivity.kt"
           grep -Fq 'DETAIL DIAGNOSTIK' "$PKG/MainActivity.kt"
@@ -161,6 +182,7 @@ jobs:
           grep -Fq 'SCAN_CART_COMMIT_BLOCKED' "$PKG/PosViewModel.kt"
           grep -Fq 'shareCurrentScanEvidence' "$PKG/ArsDevCenter.kt"
 
+          # Threshold recognition MUST remain unchanged
           grep -Fq 'ACCEPT_VISUAL_ONLY = 80' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'ACCEPT_LONG_VISUAL_ONLY = 72' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'MIN_VISUAL_MARGIN = 15' "$PKG/data/SmartRecognitionEngine.kt"
@@ -170,6 +192,7 @@ jobs:
           grep -Fq 'MIN_LONG_ANCHOR_MARGIN = 8' "$PKG/data/SmartRecognitionEngine.kt"
           grep -Fq 'REJECT_CROSS_CATEGORY_VISUAL_ONLY' "$PKG/data/SmartRecognitionEngine.kt"
 
+          # Existing pipeline safety
           grep -Fq 'RodPhysicalTrackResolver.resolve' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'RodAuthenticityEvaluator.apply' "$PKG/SmartVisualScanner.kt"
           grep -Fq 'CrossCategorySceneFirewall.apply' "$PKG/SmartVisualScanner.kt"
@@ -185,31 +208,41 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           python3 - <<'PY'
           from pathlib import Path
 
-          pairs = {'{': '}', '(': ')', '[': ']'}
-          reverse = {v: k for k, v in pairs.items()}
+          pairs = {
+              '{': '}',
+              '(': ')',
+              '[': ']'
+          }
+
+          reverse = {
+              v: k for k, v in pairs.items()
+          }
 
           def check(path):
               text = path.read_text(encoding='utf-8')
-              stack=[]
-              i=0
-              line=1
-              line_comment=False
-              block_comment=False
-              string=False
-              char=False
-              escaped=False
+
+              stack = []
+              i = 0
+              line = 1
+
+              line_comment = False
+              block_comment = False
+              string = False
+              char = False
+              escaped = False
 
               while i < len(text):
-                  c=text[i]
+                  c = text[i]
 
-                  if c=='\n':
+                  if c == '\n':
                       line += 1
-                      line_comment=False
+                      line_comment = False
                       i += 1
                       continue
 
@@ -218,8 +251,8 @@ jobs:
                       continue
 
                   if block_comment:
-                      if c=='*' and i+1 < len(text) and text[i+1]=='/':
-                          block_comment=False
+                      if c == '*' and i + 1 < len(text) and text[i + 1] == '/':
+                          block_comment = False
                           i += 2
                       else:
                           i += 1
@@ -227,62 +260,74 @@ jobs:
 
                   if string:
                       if escaped:
-                          escaped=False
-                      elif c=='\\':
-                          escaped=True
-                      elif c=='"':
-                          string=False
+                          escaped = False
+                      elif c == '\\':
+                          escaped = True
+                      elif c == '"':
+                          string = False
+
                       i += 1
                       continue
 
                   if char:
                       if escaped:
-                          escaped=False
-                      elif c=='\\':
-                          escaped=True
-                      elif c=="'":
-                          char=False
+                          escaped = False
+                      elif c == '\\':
+                          escaped = True
+                      elif c == "'":
+                          char = False
+
                       i += 1
                       continue
 
-                  if c=='/' and i+1 < len(text) and text[i+1]=='/':
-                      line_comment=True
+                  if c == '/' and i + 1 < len(text) and text[i + 1] == '/':
+                      line_comment = True
                       i += 2
                       continue
 
-                  if c=='/' and i+1 < len(text) and text[i+1]=='*':
-                      block_comment=True
+                  if c == '/' and i + 1 < len(text) and text[i + 1] == '*':
+                      block_comment = True
                       i += 2
                       continue
 
-                  if c=='"':
-                      string=True
+                  if c == '"':
+                      string = True
                       i += 1
                       continue
 
-                  if c=="'":
-                      char=True
+                  if c == "'":
+                      char = True
                       i += 1
                       continue
 
                   if c in pairs:
-                      stack.append((c,line))
+                      stack.append((c, line))
+
                   elif c in reverse:
                       if not stack or stack[-1][0] != reverse[c]:
-                          raise SystemExit(f"Mismatch in {path}:{line}")
+                          raise SystemExit(
+                              f"Mismatch in {path}:{line}"
+                          )
+
                       stack.pop()
 
                   i += 1
 
               if string or char or block_comment or stack:
-                  raise SystemExit(f"Unbalanced Kotlin: {path}")
+                  raise SystemExit(
+                      f"Unbalanced Kotlin: {path}"
+                  )
 
-          files=list(Path('app/src/main/java').rglob('*.kt'))
+          files = list(
+              Path('app/src/main/java').rglob('*.kt')
+          )
 
           for path in files:
               check(path)
 
-          print(f"KOTLIN BALANCE OK: {len(files)} files")
+          print(
+              f"KOTLIN BALANCE OK: {len(files)} files"
+          )
           PY
 
       - name: Prepare ARS POS official release signing
@@ -292,6 +337,7 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+
         run: |
           set -euo pipefail
 
@@ -317,17 +363,23 @@ jobs:
 
           KEYSTORE=$RUNNER_TEMP/ars-pos-official-release.jks
 
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$KEYSTORE"
 
           chmod 600 "$KEYSTORE"
+
           test -s "$KEYSTORE"
 
           keytool -list \
             -keystore "$KEYSTORE" \
             -storepass "$ARS_RELEASE_STORE_PASSWORD" \
-            -alias "$ARS_RELEASE_KEY_ALIAS" >/dev/null
+            -alias "$ARS_RELEASE_KEY_ALIAS" \
+            >/dev/null
 
-          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" \
+            >> "$GITHUB_ENV"
+
           echo "Official release keystore validated."
 
       - name: Clean project
@@ -336,10 +388,15 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
-          gradle clean --no-daemon --stacktrace
+
+          gradle clean \
+            --no-daemon \
+            --stacktrace
 
       - name: Build official release APK
         shell: bash
@@ -347,8 +404,10 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle \
@@ -362,18 +421,29 @@ jobs:
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release -type f -name '*.apk' -print -quit)
+          APK=$(
+            find app/build/outputs/apk/release \
+              -type f \
+              -name '*.apk' \
+              -print \
+              -quit
+          )
 
           test -n "${APK:-}" || {
             echo "ERROR: APK tidak ditemukan."
             exit 1
           }
 
-          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")
+          BADGING=$(
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" \
+              dump badging "$APK"
+          )
 
           [[ "$BADGING" == *"name='com.arspos.anglerriausyndicate'"* ]] || {
             echo "ERROR: Package APK berubah."
@@ -394,14 +464,20 @@ jobs:
             verify \
             --verbose \
             --print-certs \
-            "$APK" | tee signer-info.txt
+            "$APK" \
+            | tee signer-info.txt
 
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" \
-            -c -P 16 -v 4 "$APK"
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
 
-          CERT_SHA=$(awk -F': ' \
-            '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' \
-            signer-info.txt)
+          CERT_SHA=$(
+            awk -F': ' \
+              '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' \
+              signer-info.txt
+          )
 
           test -n "${CERT_SHA:-}" || {
             echo "ERROR: Signer SHA-256 tidak dapat dibaca."
@@ -413,13 +489,17 @@ jobs:
             exit 1
           }
 
-          CURRENT_CERT=$(printf '%s' "$CERT_SHA" \
-            | tr -d ':' \
-            | tr '[:lower:]' '[:upper:]')
+          CURRENT_CERT=$(
+            printf '%s' "$CERT_SHA" \
+              | tr -d ':' \
+              | tr '[:lower:]' '[:upper:]'
+          )
 
-          EXPECTED_CERT=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" \
-            | tr -d ':' \
-            | tr '[:lower:]' '[:upper:]')
+          EXPECTED_CERT=$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+              | tr -d ':' \
+              | tr '[:lower:]' '[:upper:]'
+          )
 
           if [ "$CURRENT_CERT" != "$EXPECTED_CERT" ]; then
             echo "ERROR: PRIORITAS TINGGI DISTRIBUSI — signer berubah dibanding secret resmi."
@@ -436,9 +516,11 @@ jobs:
           fi
 
           printf 'ARS POS OFFICIAL RELEASE\nVersion: 1.5.2 (152)\nPhase: 4.3.2.37 / V8.4.17\nPackage: com.arspos.anglerriausyndicate\nSigner SHA-256: %s\n' \
-            "$CERT_SHA" > SIGNING_FINGERPRINT.txt
+            "$CERT_SHA" \
+            > SIGNING_FINGERPRINT.txt
 
-          echo "SIGNER_SHA256=$CERT_SHA" >> "$GITHUB_ENV"
+          echo "SIGNER_SHA256=$CERT_SHA" \
+            >> "$GITHUB_ENV"
 
           {
             echo "### ARS POS Official Release"
@@ -454,9 +536,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
-          APK=$(find app/build/outputs/apk/release -type f -name '*.apk' -print -quit)
+          APK=$(
+            find app/build/outputs/apk/release \
+              -type f \
+              -name '*.apk' \
+              -print \
+              -quit
+          )
 
           test -n "${APK:-}" || {
             echo "ERROR: Release APK tidak ditemukan."
@@ -468,7 +557,9 @@ jobs:
           OUT=$OUTPUT_DIR/$OUTPUT_NAME
 
           cp "$APK" "$OUT"
-          sha256sum "$OUT" > "$OUT.sha256"
+
+          sha256sum "$OUT" \
+            > "$OUT.sha256"
 
           test -s SIGNING_FINGERPRINT.txt || {
             echo "ERROR: SIGNING_FINGERPRINT.txt tidak ditemukan."
@@ -493,8 +584,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ARS-POS-1.5.2-PHASE4.3.2.37-V8.4.17-OFFICIAL
+
           path: |
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.5.2-V8.4.17-SIGNED.apk
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/ARS-POS-1.5.2-V8.4.17-SIGNED.apk.sha256
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/release/SIGNING_FINGERPRINT.txt
+
           if-no-files-found: error
