@@ -1,0 +1,150 @@
+name: ARS POS V8.4.19 Physical Truth 155
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ARS_POS_V8_4_19_PHYSICAL_TRUTH_155.zip
+      - .github/workflows/build-apk.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ars-pos-physical-truth-155-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SOURCE_ZIP: ARS_POS_V8_4_19_PHYSICAL_TRUTH_155.zip
+      SOURCE_SHA256: df5ab6bf4019bd30b7468d22dfec00250829128c0d0e4b6838db11049ed9e32f
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Verify exact source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$SOURCE_ZIP" || { echo "::error::Upload ARS_POS_V8_4_19_PHYSICAL_TRUTH_155.zip ke root repository."; exit 1; }
+          printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
+          unzip -t "$SOURCE_ZIP" >/dev/null
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8419-155.XXXXXX")
+          unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
+          (cd "$PROJECT_DIR" && sha256sum -c SOURCE_FILES_SHA256.txt > "$RUNNER_TEMP/ars-source-checks.txt")
+          python3 -m unittest discover -s "$PROJECT_DIR/tools" -p 'test_*.py'
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Install SDK 35
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -f "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.9'
+
+      - name: Prepare existing official signer
+        shell: bash
+        env:
+          ARS_RELEASE_KEYSTORE_BASE64: ${{ secrets.ARS_RELEASE_KEYSTORE_BASE64 }}
+          ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
+          ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
+          ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+          ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          : "${ARS_RELEASE_KEYSTORE_BASE64:?Missing official keystore secret}"
+          : "${ARS_RELEASE_STORE_PASSWORD:?Missing store password secret}"
+          : "${ARS_RELEASE_KEY_ALIAS:?Missing alias secret}"
+          : "${ARS_RELEASE_KEY_PASSWORD:?Missing key password secret}"
+          : "${ARS_RELEASE_CERT_SHA256:?Missing certificate secret}"
+          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          test "$EXPECTED" = "AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
+          KEYSTORE="$RUNNER_TEMP/ars-v8419-physical-truth-155.jks"
+          umask 077
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass:env ARS_RELEASE_STORE_PASSWORD -alias "$ARS_RELEASE_KEY_ALIAS" >/dev/null
+          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+
+      - name: Compile, run JVM tests, build signed APK
+        shell: bash
+        env:
+          ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
+          ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
+          ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle :app:testDebugUnitTest :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify APK package, version, signature and alignment
+        shell: bash
+        env:
+          ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          SDK_BIN="$ANDROID_HOME/build-tools/35.0.0"
+          "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
+          grep -Fq "name='com.arspos.anglerriausyndicate'" apk-badging.txt
+          grep -Fq "versionCode='155'" apk-badging.txt
+          grep -Fq "versionName='1.5.5'" apk-badging.txt
+          test 155 -gt 154
+          "$SDK_BIN/apksigner" verify --verbose --print-certs "$APK" > signer-info.txt
+          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          ACTUAL=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          test "$ACTUAL" = "$EXPECTED"
+          test "$ACTUAL" = "AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
+          mkdir -p "$GITHUB_WORKSPACE/release-output"
+          cp "$APK" "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.5-V8.4.19-PHYSICAL-TRUTH-SIGNED.apk"
+          cp signer-info.txt "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
+          cp apk-badging.txt "$GITHUB_WORKSPACE/release-output/APK_METADATA.txt"
+          cd "$GITHUB_WORKSPACE/release-output"
+          sha256sum ARS-POS-1.5.5-V8.4.19-PHYSICAL-TRUTH-SIGNED.apk > APK_SHA256.txt
+          echo "Build 1.5.5 (155), Phase 4.3.2.39, V8.4.19 Physical Truth. Install in-place; do not uninstall." >> "$GITHUB_STEP_SUMMARY"
+          echo "JVM tests passed. Device scanner acceptance tests are still required." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verified official APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARS-POS-V8.4.19-PHYSICAL-TRUTH-155-OFFICIAL
+          path: release-output/
+          if-no-files-found: error
+
+      - name: Upload JVM test reports
+        if: always() && env.PROJECT_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARS-POS-PHYSICAL-TRUTH-155-TEST-REPORTS
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/reports/tests/
+            ${{ env.PROJECT_DIR }}/app/build/test-results/
+            ${{ env.PROJECT_DIR }}/validation/
+          if-no-files-found: warn
+
+      - name: Remove runner copy of signing key
+        if: always()
+        shell: bash
+        run: |
+          rm -f -- "$RUNNER_TEMP/ars-v8419-physical-truth-155.jks"
