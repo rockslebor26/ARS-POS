@@ -1,18 +1,18 @@
-name: ARS POS V8.4.19 Physical Truth 155 Build Fix 1
+name: ARS POS V8.4.19 Physical Truth 155 Build Fix 2
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_4_19_PHYSICAL_TRUTH_155_BUILD_FIX1.zip
+      - ARS_POS_V8_4_19_PHYSICAL_TRUTH_155_BUILD_FIX2.zip
       - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-physical-truth-155-build-fix1-${{ github.ref }}
+  group: ars-pos-physical-truth-155-build-fix2-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SOURCE_ZIP: ARS_POS_V8_4_19_PHYSICAL_TRUTH_155_BUILD_FIX1.zip
-      SOURCE_SHA256: df5ab6bf4019bd30b7468d22dfec00250829128c0d0e4b6838db11049ed9e32f
+      SOURCE_ZIP: ARS_POS_V8_4_19_PHYSICAL_TRUTH_155_BUILD_FIX2.zip
+      SOURCE_SHA256: d57b9b27dde4cb14542ef8b01ddcdb9b39449457b75e9eac46a9b28217a0f4d0
 
     steps:
       - name: Checkout repository
@@ -29,10 +29,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact source package
+      - name: Verify exact FIX2 source package
         shell: bash
         run: |
           set -euo pipefail
+
           test -f "$SOURCE_ZIP" || {
             echo "::error::Upload $SOURCE_ZIP ke root repository."
             exit 1
@@ -41,33 +42,71 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8419-155-fix1.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8419-155-fix2.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
           test -f "$PROJECT_DIR/settings.gradle.kts" || {
-            echo "::error::ZIP harus berisi root project Android langsung, bukan folder pembungkus tambahan."
+            echo "::error::settings.gradle.kts tidak ditemukan di root ZIP."
             exit 1
           }
+
+          test -f "$PROJECT_DIR/build.gradle.kts" || {
+            echo "::error::build.gradle.kts tidak ditemukan di root ZIP."
+            exit 1
+          }
+
           test -f "$PROJECT_DIR/app/build.gradle.kts" || {
-            echo "::error::app/build.gradle.kts tidak ditemukan di root hasil ekstraksi ZIP."
+            echo "::error::app/build.gradle.kts tidak ditemukan."
             exit 1
           }
+
+          test -f "$PROJECT_DIR/physicaltruth-jvm/build.gradle.kts" || {
+            echo "::error::physicaltruth-jvm/build.gradle.kts tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/RodMaterialEvidenceTest.kt" || {
+            echo "::error::RodMaterialEvidenceTest.kt JVM module tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/PhysicalImageEvidenceTest.kt" || {
+            echo "::error::PhysicalImageEvidenceTest.kt JVM module tidak ditemukan."
+            exit 1
+          }
+
           test -f "$PROJECT_DIR/tools/validate_source.py" || {
             echo "::error::tools/validate_source.py tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/SOURCE_FILES_SHA256.txt" || {
             echo "::error::SOURCE_FILES_SHA256.txt tidak ditemukan."
             exit 1
           }
 
           python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
+
           (
             cd "$PROJECT_DIR"
-            sha256sum -c SOURCE_FILES_SHA256.txt > "$RUNNER_TEMP/ars-source-checks.txt"
+            sha256sum -c SOURCE_FILES_SHA256.txt \
+              > "$RUNNER_TEMP/ars-source-checks.txt"
           )
-          python3 -m unittest discover -s "$PROJECT_DIR/tools" -p 'test_*.py'
+
+          python3 -m unittest discover \
+            -s "$PROJECT_DIR/tools" \
+            -p 'test_*.py'
+
+          if grep -RInE 'javax\.imageio|ImageIO' \
+            "$PROJECT_DIR/app/src/test" \
+            --include='*.kt'; then
+            echo "::error::Java SE ImageIO tidak boleh berada di Android app/src/test."
+            exit 1
+          fi
+
+          echo "FIX2 source integrity and test-boundary validation: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -75,30 +114,39 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Do not use android-actions/setup-android here.
-      # The previous workflow failed because that action invoked the obsolete
-      # `sdkmanager tools` package. GitHub's Ubuntu runner already provides
-      # Android command-line tools; this workflow resolves sdkmanager directly
-      # and installs only the exact packages ARS POS requires.
       - name: Resolve Android SDK manager
         shell: bash
         run: |
           set -euo pipefail
 
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
           if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
             echo "::error::Android SDK root tidak tersedia pada GitHub runner."
             exit 1
           fi
 
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
+
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+            SDKMANAGER_BIN="$(
+              find "$SDK_ROOT/cmdline-tools" \
+                -type f \
+                -name sdkmanager \
+                -perm -111 \
+                2>/dev/null |
+              sort -V |
+              tail -n 1 || true
+            )"
           fi
 
           if [ -z "$SDKMANAGER_BIN" ] || [ ! -x "$SDKMANAGER_BIN" ]; then
             echo "::error::sdkmanager tidak ditemukan pada Android SDK runner."
-            find "$SDK_ROOT" -maxdepth 4 -type f -name sdkmanager -print || true
+            find "$SDK_ROOT" \
+              -maxdepth 4 \
+              -type f \
+              -name sdkmanager \
+              -print || true
             exit 1
           fi
 
@@ -117,17 +165,27 @@ jobs:
         run: |
           set -euo pipefail
 
-          yes | "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          yes | "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            --licenses >/dev/null || true
 
-          "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" \
+          "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          test -f "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt"
+          test -f \
+            "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
+
+          test -x \
+            "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt"
+
+          test -x \
+            "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
+
+          test -x \
+            "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
@@ -138,9 +196,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           java -version
           gradle --version
           "$SDKMANAGER_BIN" --version
+
+          cd "$PROJECT_DIR"
+
+          gradle projects --no-daemon
 
       - name: Prepare and verify existing official signer
         shell: bash
@@ -150,6 +213,7 @@ jobs:
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+
         run: |
           set -euo pipefail
 
@@ -159,15 +223,26 @@ jobs:
           : "${ARS_RELEASE_KEY_PASSWORD:?Missing key password secret}"
           : "${ARS_RELEASE_CERT_SHA256:?Missing certificate secret}"
 
-          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
-          test "$EXPECTED" = "AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB" || {
+          EXPECTED=$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" |
+            tr -d ':[:space:]' |
+            tr '[:lower:]' '[:upper:]'
+          )
+
+          OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
+
+          test "$EXPECTED" = "$OFFICIAL" || {
             echo "::error::ARS_RELEASE_CERT_SHA256 bukan fingerprint resmi ARS POS."
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v8419-physical-truth-155-fix1.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v8419-physical-truth-155-fix2.jks"
+
           umask 077
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" |
+            base64 --decode > "$KEYSTORE"
+
           test -s "$KEYSTORE"
 
           keytool -list \
@@ -179,10 +254,10 @@ jobs:
             keytool -exportcert -rfc \
               -keystore "$KEYSTORE" \
               -storepass:env ARS_RELEASE_STORE_PASSWORD \
-              -alias "$ARS_RELEASE_KEY_ALIAS" \
-            | openssl x509 -outform DER \
-            | sha256sum \
-            | awk '{print toupper($1)}'
+              -alias "$ARS_RELEASE_KEY_ALIAS" |
+            openssl x509 -outform DER |
+            sha256sum |
+            awk '{print toupper($1)}'
           )
 
           if [ "$KEYSTORE_ACTUAL" != "$EXPECTED" ]; then
@@ -191,43 +266,108 @@ jobs:
           fi
 
           echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
-          echo "Official signer pre-build verification: PASS" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Compile, run JVM tests, build signed APK
+          echo "Official signer pre-build verification: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run physical truth JVM evidence replay
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd "$PROJECT_DIR"
+
+          gradle \
+            :physicaltruth-jvm:test \
+            --no-daemon \
+            --stacktrace
+
+          echo "Physical Truth JVM evidence replay: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run Android unit tests and build signed APK
         shell: bash
         env:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
-          gradle :app:testDebugUnitTest :app:assembleRelease --no-daemon --stacktrace
+
+          gradle \
+            :app:testDebugUnitTest \
+            :app:assembleRelease \
+            --no-daemon \
+            --stacktrace
 
       - name: Verify APK package, version, signature and alignment
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK=app/build/outputs/apk/release/app-release.apk
+
           test -s "$APK"
 
           SDK_BIN="$ANDROID_SDK_ROOT/build-tools/35.0.0"
-          "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
 
-          grep -Fq "name='com.arspos.anglerriausyndicate'" apk-badging.txt
-          grep -Fq "versionCode='155'" apk-badging.txt
-          grep -Fq "versionName='1.5.5'" apk-badging.txt
+          "$SDK_BIN/aapt" \
+            dump badging "$APK" \
+            > apk-badging.txt
+
+          grep -Fq \
+            "name='com.arspos.anglerriausyndicate'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionCode='155'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionName='1.5.5'" \
+            apk-badging.txt
+
           test 155 -gt 154
 
-          "$SDK_BIN/apksigner" verify --verbose --print-certs "$APK" > signer-info.txt
-          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          "$SDK_BIN/apksigner" \
+            verify \
+            --verbose \
+            --print-certs \
+            "$APK" \
+            > signer-info.txt
 
-          ACTUAL=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
-          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          "$SDK_BIN/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
+
+          ACTUAL=$(
+            awk -F': ' \
+              '/Signer #1 certificate SHA-256 digest:/ {
+                print $2
+                exit
+              }' \
+              signer-info.txt |
+            tr -d ':[:space:]' |
+            tr '[:lower:]' '[:upper:]'
+          )
+
+          EXPECTED=$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" |
+            tr -d ':[:space:]' |
+            tr '[:lower:]' '[:upper:]'
+          )
+
+          OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
 
           test -n "$ACTUAL" || {
             echo "::error::Fingerprint signer APK tidak ditemukan pada output apksigner."
@@ -235,12 +375,12 @@ jobs:
           }
 
           test "$ACTUAL" = "$EXPECTED"
-          test "$ACTUAL" = "AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
+          test "$ACTUAL" = "$OFFICIAL"
 
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.5-V8.4.19-PHYSICAL-TRUTH-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.5-V8.4.19-PHYSICAL-TRUTH-BUILD-FIX2-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -254,40 +394,58 @@ jobs:
           cp "$RUNNER_TEMP/ars-sdk-info.txt" \
             "$GITHUB_WORKSPACE/release-output/SDK_INFO.txt"
 
+          cp validation/validation-status.json \
+            "$GITHUB_WORKSPACE/release-output/SOURCE_VALIDATION_STATUS.json"
+
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.5.5-V8.4.19-PHYSICAL-TRUTH-SIGNED.apk \
+            ARS-POS-1.5.5-V8.4.19-PHYSICAL-TRUTH-BUILD-FIX2-SIGNED.apk \
             > APK_SHA256.txt
 
-          echo "Build 1.5.5 (155), Phase 4.3.2.39, V8.4.19 Physical Truth." >> "$GITHUB_STEP_SUMMARY"
-          echo "Install in-place; do not uninstall." >> "$GITHUB_STEP_SUMMARY"
-          echo "Source integrity, JVM tests, package, version, signer and alignment passed." >> "$GITHUB_STEP_SUMMARY"
-          echo "Device scanner acceptance tests are still required." >> "$GITHUB_STEP_SUMMARY"
+          echo \
+            "Build 1.5.5 (155), Phase 4.3.2.39, V8.4.19 Physical Truth BUILD FIX2." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Install in-place; do not uninstall." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Device scanner acceptance tests are still required." \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.4.19-PHYSICAL-TRUTH-155-BUILD-FIX1-OFFICIAL
+          name: ARS-POS-V8.4.19-PHYSICAL-TRUTH-155-BUILD-FIX2-OFFICIAL
           path: release-output/
           if-no-files-found: error
+          retention-days: 30
 
-      - name: Upload JVM test reports
+      - name: Upload test reports
         if: always() && env.PROJECT_DIR != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-PHYSICAL-TRUTH-155-BUILD-FIX1-TEST-REPORTS
+          name: ARS-POS-PHYSICAL-TRUTH-155-BUILD-FIX2-TEST-REPORTS
           path: |
+            ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
+            ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
             ${{ env.PROJECT_DIR }}/app/build/reports/tests/
             ${{ env.PROJECT_DIR }}/app/build/test-results/
             ${{ env.PROJECT_DIR }}/validation/
           if-no-files-found: warn
+          retention-days: 30
 
       - name: Remove runner copy of signing key
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v8419-physical-truth-155-fix1.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v8419-physical-truth-155-fix2.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
