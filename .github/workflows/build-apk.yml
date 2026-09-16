@@ -1,27 +1,28 @@
-name: ARS POS V8.4.20 Scene-Aware Smart Scan 157
+name: ARS POS V8.4.20-A Package Edge Anchor 156
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_4_20_SCENE_AWARE_157.zip
+      - ARS_POS_V8_4_20A_PACKAGE_EDGE_ANCHOR_156.zip
       - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v8420-scene-aware-157-${{ github.ref }}
+  group: ars-pos-v8420a-package-edge-anchor-156-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
     env:
-      SOURCE_ZIP: ARS_POS_V8_4_20_SCENE_AWARE_157.zip
-      SOURCE_SHA256: 6fe948487bd4af0e1420b0b0f5561b61020e0662b61c6585299454733f19bf04
+      SOURCE_ZIP: ARS_POS_V8_4_20A_PACKAGE_EDGE_ANCHOR_156.zip
+      SOURCE_SHA256: e43c9253bbced26d634b689bbe2e3e09c0231ea8297fd354ae4bfff998ffe742
 
     steps:
       - name: Checkout repository
@@ -29,7 +30,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact V8.4.20 Scene-Aware source package
+      - name: Verify exact V8.4.20-A source package
         shell: bash
         run: |
           set -euo pipefail
@@ -42,7 +43,7 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8420-157.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8420a-156.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
@@ -50,54 +51,52 @@ jobs:
             echo "::error::settings.gradle.kts tidak ditemukan di root ZIP."
             exit 1
           }
+
           test -f "$PROJECT_DIR/build.gradle.kts" || {
             echo "::error::build.gradle.kts tidak ditemukan di root ZIP."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/build.gradle.kts" || {
             echo "::error::app/build.gradle.kts tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/build.gradle.kts" || {
             echo "::error::physicaltruth-jvm/build.gradle.kts tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/RodMaterialEvidenceTest.kt" || {
             echo "::error::RodMaterialEvidenceTest.kt JVM module tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/PhysicalImageEvidenceTest.kt" || {
             echo "::error::PhysicalImageEvidenceTest.kt JVM module tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/PackageEdgeEvidenceTest.kt" || {
             echo "::error::PackageEdgeEvidenceTest.kt JVM regression tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PackageEdgePolicy.kt" || {
             echo "::error::PackageEdgePolicy.kt tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/RodEndpointProfile.kt" || {
             echo "::error::RodEndpointProfile.kt tidak ditemukan."
             exit 1
           }
-          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveScenePreview.kt" || {
-            echo "::error::LiveScenePreview.kt tidak ditemukan."
-            exit 1
-          }
-          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt" || {
-            echo "::error::LiveSmartScanCamera.kt tidak ditemukan."
-            exit 1
-          }
-          test -f "$PROJECT_DIR/PHASE4_3_2_40_V8_4_20_SCENE_AWARE_SMART_SCAN.md" || {
-            echo "::error::Dokumen Scene-Aware V8.4.20 tidak ditemukan."
-            exit 1
-          }
+
           test -f "$PROJECT_DIR/tools/validate_source.py" || {
             echo "::error::tools/validate_source.py tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/SOURCE_FILES_SHA256.txt" || {
             echo "::error::SOURCE_FILES_SHA256.txt tidak ditemukan."
             exit 1
@@ -117,11 +116,12 @@ jobs:
           if grep -RInE 'javax\.imageio|ImageIO' \
             "$PROJECT_DIR/app/src/test" \
             --include='*.kt'; then
+
             echo "::error::Java SE ImageIO tidak boleh berada di Android app/src/test."
             exit 1
           fi
 
-          echo "V8.4.20 Scene-Aware source integrity and test-boundary validation: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "V8.4.20-A source integrity and test-boundary validation: PASS" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -129,24 +129,26 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Do not use android-actions/setup-android here.
-      # The previous CI failure was caused by that action requesting obsolete
-      # package `tools`. GitHub's Ubuntu runner already carries Android command
-      # line tools, so resolve sdkmanager directly and install exact SDK packages.
       - name: Resolve Android SDK manager
         shell: bash
         run: |
           set -euo pipefail
 
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
           if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
             echo "::error::Android SDK root tidak tersedia pada GitHub runner."
             exit 1
           fi
 
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
+
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              -perm -111 \
+              2>/dev/null | sort -V | tail -n 1 || true)"
           fi
 
           if [ -z "$SDKMANAGER_BIN" ] || [ ! -x "$SDKMANAGER_BIN" ]; then
@@ -170,9 +172,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          yes | "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          yes | "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            --licenses >/dev/null || true
 
-          "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" \
+          "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
@@ -191,6 +196,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           java -version
           gradle --version
           "$SDKMANAGER_BIN" --version
@@ -206,6 +212,7 @@ jobs:
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+
         run: |
           set -euo pipefail
 
@@ -215,7 +222,10 @@ jobs:
           : "${ARS_RELEASE_KEY_PASSWORD:?Missing key password secret}"
           : "${ARS_RELEASE_CERT_SHA256:?Missing certificate secret}"
 
-          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')
+
           OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
 
           test "$EXPECTED" = "$OFFICIAL" || {
@@ -223,9 +233,13 @@ jobs:
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v8420-157.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v8420a-156.jks"
+
           umask 077
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode > "$KEYSTORE"
+
           test -s "$KEYSTORE"
 
           keytool -list \
@@ -249,12 +263,14 @@ jobs:
           fi
 
           echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+
           echo "Official signer pre-build verification: PASS" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run physical truth JVM evidence replay
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle \
@@ -270,8 +286,10 @@ jobs:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
           ARS_RELEASE_KEY_ALIAS: ${{ secrets.ARS_RELEASE_KEY_ALIAS }}
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           gradle \
@@ -284,26 +302,50 @@ jobs:
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
+
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK=app/build/outputs/apk/release/app-release.apk
+
           test -s "$APK"
 
           SDK_BIN="$ANDROID_SDK_ROOT/build-tools/35.0.0"
+
           "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
 
           grep -Fq "name='com.arspos.anglerriausyndicate'" apk-badging.txt
-          grep -Fq "versionCode='157'" apk-badging.txt
-          grep -Fq "versionName='1.5.7'" apk-badging.txt
-          test 157 -gt 156
+          grep -Fq "versionCode='156'" apk-badging.txt
+          grep -Fq "versionName='1.5.6'" apk-badging.txt
 
-          "$SDK_BIN/apksigner" verify --verbose --print-certs "$APK" > signer-info.txt
-          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          test 156 -gt 155
 
-          ACTUAL=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
-          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          "$SDK_BIN/apksigner" \
+            verify \
+            --verbose \
+            --print-certs \
+            "$APK" > signer-info.txt
+
+          "$SDK_BIN/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
+
+          ACTUAL=$(
+            awk -F': ' \
+              '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' \
+              signer-info.txt \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
+          )
+
+          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')
+
           OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
 
           test -n "$ACTUAL" || {
@@ -317,7 +359,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.7-V8.4.20-SCENE-AWARE-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.6-V8.4.20A-PACKAGE-EDGE-ANCHOR-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -337,18 +379,21 @@ jobs:
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.5.7-V8.4.20-SCENE-AWARE-SIGNED.apk \
+            ARS-POS-1.5.6-V8.4.20A-PACKAGE-EDGE-ANCHOR-SIGNED.apk \
             > APK_SHA256.txt
 
-          echo "Build 1.5.7 (157), Phase 4.3.2.40, V8.4.20 Scene-Aware Smart Scan + Package Edge Firewall + Anchor Role Truth." >> "$GITHUB_STEP_SUMMARY"
+          echo "Build 1.5.6 (156), Phase 4.3.2.40, V8.4.20-A Package Edge Firewall + Bidirectional Anchor Role." >> "$GITHUB_STEP_SUMMARY"
+
           echo "Install in-place; do not uninstall." >> "$GITHUB_STEP_SUMMARY"
+
           echo "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." >> "$GITHUB_STEP_SUMMARY"
-          echo "V8.4.20 device live-scanner acceptance tests are required before finish." >> "$GITHUB_STEP_SUMMARY"
+
+          echo "V8.4.20-A device scanner acceptance tests are still required before V8.4.20-B." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.4.20-SCENE-AWARE-157-OFFICIAL
+          name: ARS-POS-V8.4.20A-PACKAGE-EDGE-ANCHOR-156-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -357,7 +402,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.4.20-157-TEST-REPORTS
+          name: ARS-POS-V8.4.20A-156-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -371,7 +416,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v8420-157.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v8420a-156.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
