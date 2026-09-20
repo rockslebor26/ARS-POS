@@ -1,18 +1,18 @@
-name: ARS POS V8.4.20-A Package Edge Anchor 156
+name: ARS POS V8.4.22 Live Object Temporal Truth 159
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_4_20A_PACKAGE_EDGE_ANCHOR_156.zip
+      - ARS_POS_V8_4_22_LIVE_OBJECT_TEMPORAL_TRUTH_159.zip
       - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v8420a-package-edge-anchor-156-${{ github.ref }}
+  group: ars-pos-v8422-live-object-temporal-truth-159-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -21,8 +21,8 @@ jobs:
     timeout-minutes: 45
 
     env:
-      SOURCE_ZIP: ARS_POS_V8_4_20A_PACKAGE_EDGE_ANCHOR_156.zip
-      SOURCE_SHA256: e43c9253bbced26d634b689bbe2e3e09c0231ea8297fd354ae4bfff998ffe742
+      SOURCE_ZIP: ARS_POS_V8_4_22_LIVE_OBJECT_TEMPORAL_TRUTH_159.zip
+      SOURCE_SHA256: 2a587845c770c26745cbb49e78d32dbdfa385067b1ee372c359d63d23141ab69
 
     steps:
       - name: Checkout repository
@@ -30,7 +30,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact V8.4.20-A source package
+      - name: Verify exact V8.4.22 Live Object Temporal Truth source package
         shell: bash
         run: |
           set -euo pipefail
@@ -43,7 +43,7 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8420a-156.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v8422-159.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
@@ -92,6 +92,37 @@ jobs:
             exit 1
           }
 
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveScenePreview.kt" || {
+            echo "::error::LiveScenePreview.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt" || {
+            echo "::error::LiveSmartScanCamera.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/NormalProposalPurityPolicy.kt" || {
+            echo "::error::NormalProposalPurityPolicy.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PersistentPhysicalIdBinder.kt" || {
+            echo "::error::PersistentPhysicalIdBinder.kt tidak ditemukan."
+            exit 1
+          }
+
+          grep -Fq 'typed-lane invariant' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveScenePreview.kt"
+
+          grep -Fq 'cross-lane bind forbidden' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PersistentPhysicalIdBinder.kt"
+
+          test -f "$PROJECT_DIR/PHASE4_3_2_42_V8_4_22_LIVE_OBJECT_TEMPORAL_TRUTH.md" || {
+            echo "::error::Dokumen Live Object Temporal Truth V8.4.22 tidak ditemukan."
+            exit 1
+          }
+
           test -f "$PROJECT_DIR/tools/validate_source.py" || {
             echo "::error::tools/validate_source.py tidak ditemukan."
             exit 1
@@ -101,6 +132,27 @@ jobs:
             echo "::error::SOURCE_FILES_SHA256.txt tidak ditemukan."
             exit 1
           }
+
+          # Regression guard for Kotlin/Compose compile failure from the first 157 attempt.
+          # Modifier.weight(...) is a RowScope/ColumnScope API.
+          if grep -RIn '^import androidx\.compose\.foundation\.layout\.weight$' \
+            "$PROJECT_DIR/app/src/main/java" --include='*.kt'; then
+
+            echo "::error::Invalid explicit Compose weight import detected."
+            exit 1
+          fi
+
+          grep -Fq 'object NormalProposalPurityPolicy' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/NormalProposalPurityPolicy.kt"
+
+          grep -Fq 'object PersistentPhysicalIdBinder' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PersistentPhysicalIdBinder.kt"
+
+          grep -Fq 'recordGroundTruth' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsVisualEvidenceRecorder.kt"
+
+          grep -Fq 'analysis_replay.png' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsVisualEvidenceRecorder.kt"
 
           python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
 
@@ -121,7 +173,7 @@ jobs:
             exit 1
           fi
 
-          echo "V8.4.20-A source integrity and test-boundary validation: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "V8.4.22 Live Object Temporal Truth source integrity and test-boundary validation: PASS" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -233,7 +285,7 @@ jobs:
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v8420a-156.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v8422-159.jks"
 
           umask 077
 
@@ -317,10 +369,10 @@ jobs:
           "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
 
           grep -Fq "name='com.arspos.anglerriausyndicate'" apk-badging.txt
-          grep -Fq "versionCode='156'" apk-badging.txt
-          grep -Fq "versionName='1.5.6'" apk-badging.txt
+          grep -Fq "versionCode='159'" apk-badging.txt
+          grep -Fq "versionName='1.5.9'" apk-badging.txt
 
-          test 156 -gt 155
+          test 159 -gt 158
 
           "$SDK_BIN/apksigner" \
             verify \
@@ -359,7 +411,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.6-V8.4.20A-PACKAGE-EDGE-ANCHOR-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.5.9-V8.4.22-LIVE-OBJECT-TEMPORAL-TRUTH-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -379,21 +431,21 @@ jobs:
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.5.6-V8.4.20A-PACKAGE-EDGE-ANCHOR-SIGNED.apk \
+            ARS-POS-1.5.9-V8.4.22-LIVE-OBJECT-TEMPORAL-TRUTH-SIGNED.apk \
             > APK_SHA256.txt
 
-          echo "Build 1.5.6 (156), Phase 4.3.2.40, V8.4.20-A Package Edge Firewall + Bidirectional Anchor Role." >> "$GITHUB_STEP_SUMMARY"
+          echo "Build 1.5.9 (159), Phase 4.3.2.42, V8.4.22 Live Object Temporal Truth + Persistent Owner Binding; Object Purity + Package Edge Firewall + Anchor Role Truth retained." >> "$GITHUB_STEP_SUMMARY"
 
           echo "Install in-place; do not uninstall." >> "$GITHUB_STEP_SUMMARY"
 
           echo "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." >> "$GITHUB_STEP_SUMMARY"
 
-          echo "V8.4.20-A device scanner acceptance tests are still required before V8.4.20-B." >> "$GITHUB_STEP_SUMMARY"
+          echo "V8.4.22 device temporal live-object + persistent binding + purity/ground-truth/replay acceptance tests are required before finish." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.4.20A-PACKAGE-EDGE-ANCHOR-156-OFFICIAL
+          name: ARS-POS-V8.4.22-LIVE-OBJECT-TEMPORAL-TRUTH-159-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -402,7 +454,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.4.20A-156-TEST-REPORTS
+          name: ARS-POS-V8.4.22-159-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -416,7 +468,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v8420a-156.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v8422-159.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
