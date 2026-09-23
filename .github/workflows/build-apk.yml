@@ -1,18 +1,18 @@
-name: ARS POS V8.7.0 Correct-Type Live Identity 190
+name: ARS POS V8.8.0 Identity Intelligence 200 R1 20260924
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_7_0_CORRECT_TYPE_LIVE_IDENTITY_190.zip
-      - .github/workflows/build-apk.yml
+      - ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R1_20260924.zip
+      - .github/workflows/build-apk_ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R1_20260924.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v870-correct-type-live-identity-190-${{ github.ref }}
+  group: ars-pos-v880-identity-intelligence-200-r1-20260924-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SOURCE_ZIP: ARS_POS_V8_7_0_CORRECT_TYPE_LIVE_IDENTITY_190.zip
-      SOURCE_SHA256: 1a3dab685f43d8cfc3a9bd3fb2313633bdbc02c0cbc45526c68ce1fc978eac99
+      SOURCE_ZIP: ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R1_20260924.zip
+      SOURCE_SHA256: 5b5c4933e86041525690f09083a1e0bb877532e81efe2368db3f89ae9c60d7d8
 
     steps:
       - name: Checkout repository
@@ -29,7 +29,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact V8.7.0 Correct-Type Live Identity source package
+      - name: Verify exact V8.8.0 Identity Intelligence source package
         shell: bash
         run: |
           set -euo pipefail
@@ -42,7 +42,7 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v870-190.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v880-200.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
@@ -111,6 +111,36 @@ jobs:
             exit 1
           }
 
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/IdentityTextPolicy.kt" || {
+            echo "::error::IdentityTextPolicy.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveIdentityPolicy.kt" || {
+            echo "::error::LiveIdentityPolicy.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/test/java/com/arspos/anglerriausyndicate/IdentityTextPolicyTest.kt" || {
+            echo "::error::IdentityTextPolicyTest.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/test/java/com/arspos/anglerriausyndicate/LiveIdentityPolicyTest.kt" || {
+            echo "::error::LiveIdentityPolicyTest.kt tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/test/resources/identity/v870_esse_change_double_unknown.jpg" || {
+            echo "::error::ESSE V8.7.0 field regression fixture tidak ditemukan."
+            exit 1
+          }
+
+          printf '%s  %s\n' \
+            "8a9f49121738346d6d2fc73425208517ffa789afbba7758cbb4a5fc64ca2b8a0" \
+            "$PROJECT_DIR/app/src/test/resources/identity/v870_esse_change_double_unknown.jpg" \
+            | sha256sum -c -
+
           test -f "$PROJECT_DIR/app/src/test/resources/physical_truth/v860_normal_bottle_misrouted_long.jpg" || {
             echo "::error::Bound V8.6.0 NORMAL bottle regression fixture tidak ditemukan."
             exit 1
@@ -137,13 +167,13 @@ jobs:
           grep -Fq 'cross-lane bind forbidden' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PersistentPhysicalIdBinder.kt"
 
-          test -f "$PROJECT_DIR/PHASE4_3_4_1_V8_7_0_CORRECT_TYPE_LIVE_IDENTITY.md" || {
-            echo "::error::Dokumen Adaptive Visual Learning V8.6.0 tidak ditemukan."
+          test -f "$PROJECT_DIR/PHASE4_3_5_0_V8_8_0_IDENTITY_INTELLIGENCE.md" || {
+            echo "::error::Dokumen Identity Intelligence V8.8.0 tidak ditemukan."
             exit 1
           }
 
-          test -f "$PROJECT_DIR/RELEASE_190.md" || {
-            echo "::error::RELEASE_190.md tidak ditemukan."
+          test -f "$PROJECT_DIR/RELEASE_200.md" || {
+            echo "::error::RELEASE_200.md tidak ditemukan."
             exit 1
           }
 
@@ -240,7 +270,50 @@ jobs:
           grep -Fq 'ground_truth.jsonl' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsVisualEvidenceRecorder.kt"
 
-          # V8.7.0 correct-type routing + AI Gateway guards.
+          # V8.8.0 field-video identity regression guards.
+          grep -Fq 'AMBIGUOUS_VISUAL_REQUIRES_OCR' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveIdentityPolicy.kt"
+
+          grep -Fq 'LiveIdentityPolicy.shouldRunNormalIdentity' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
+          grep -Fq 'IdentityTextPolicy.identityBearingText' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+
+          grep -Fq 'NORMAL_VISUAL_MASTER_VERIFIED_WEAK_OCR' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+
+          grep -Fq 'enableConfirmedHybridVisual' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
+          grep -Fq 'AJARKAN OBJEK ${firstUnrecognized.index} KE ARS' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          grep -Fq 'OCR IDENTITAS:' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          grep -Fq '"identityOcr"' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
+          grep -Fq '"ocrGateReasons"' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
+
+          grep -Fq 'FEATURE_AMBIGUOUS_VISUAL_OCR = true' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'FEATURE_REGULATORY_TEXT_FILTER = true' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'FEATURE_WEAK_OCR_VISUAL_FALLBACK = true' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'FEATURE_DIRECT_TEACH_CTA = true' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'FEATURE_CONFIRMED_HYBRID_VISUAL = true' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          # V8.8.0 Identity Intelligence + AI Gateway guards.
           # These modules may add evidence/recovery/teaching,
           # but must not bypass existing recognition/quantity safety.
           for f in \
@@ -250,7 +323,7 @@ jobs:
             ArsSafetyKernel.kt \
             ArsDecisionEvidenceLedger.kt; do
             test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/$f" || {
-              echo "::error::V8.7.0 module $f tidak ditemukan."
+              echo "::error::V8.8.0 module $f tidak ditemukan."
               exit 1
             }
           done
@@ -275,7 +348,7 @@ jobs:
             ArsAiLocalAdvisor.kt \
             ArsAiRequestSecurity.kt; do
             test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/$f" || {
-              echo "::error::V8.7.0 AI Engineer module $f tidak ditemukan."
+              echo "::error::V8.8.0 AI Engineer module $f tidak ditemukan."
               exit 1
             }
           done
@@ -293,13 +366,13 @@ jobs:
           grep -Fq 'AI_ENGINEER_MODE = "ENGINEERING_PROPOSAL_GATED"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
 
-          grep -Fq 'PHASE = "4.3.4.1"' \
+          grep -Fq 'PHASE = "4.3.5.0"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
 
-          grep -Fq 'ENGINE = "V8.7.0"' \
+          grep -Fq 'ENGINE = "V8.8.0"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
 
-          grep -Fq 'VERSION_CODE = 190' \
+          grep -Fq 'VERSION_CODE = 200' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
 
           grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
@@ -351,7 +424,7 @@ jobs:
           # AI code changes stay release-gated.
           grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt" || {
-              echo "::error::V8.7.0 confirmed-learning mode is not active as expected."
+              echo "::error::V8.8.0 confirmed-learning mode is not active as expected."
               exit 1
             }
 
@@ -373,7 +446,7 @@ jobs:
             exit 1
           fi
 
-          echo "V8.7.0 Correct-Type Live Identity source integrity and safety-boundary validation: PASS" \
+          echo "V8.8.0 Identity Intelligence source integrity and safety-boundary validation: PASS" \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
@@ -382,6 +455,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Do not use android-actions/setup-android here.
+      # The previous CI failure was caused by that action requesting obsolete
+      # package `tools`. GitHub's Ubuntu runner already carries Android command
+      # line tools, so resolve sdkmanager directly and install exact SDK packages.
       - name: Resolve Android SDK manager
         shell: bash
         run: |
@@ -397,15 +474,7 @@ jobs:
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
 
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(
-              find "$SDK_ROOT/cmdline-tools" \
-                -type f \
-                -name sdkmanager \
-                -perm -111 \
-                2>/dev/null \
-                | sort -V \
-                | tail -n 1 || true
-            )"
+            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
           fi
 
           if [ -z "$SDKMANAGER_BIN" ] || [ ! -x "$SDKMANAGER_BIN" ]; then
@@ -491,7 +560,7 @@ jobs:
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v870-190.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v880-200.jks"
 
           umask 077
 
@@ -578,14 +647,14 @@ jobs:
             apk-badging.txt
 
           grep -Fq \
-            "versionCode='190'" \
+            "versionCode='200'" \
             apk-badging.txt
 
           grep -Fq \
-            "versionName='1.9.0'" \
+            "versionName='1.10.0'" \
             apk-badging.txt
 
-          test 190 -gt 180
+          test 200 -gt 190
 
           "$SDK_BIN/apksigner" \
             verify \
@@ -626,7 +695,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.9.0-V8.7.0-CORRECT-TYPE-LIVE-IDENTITY-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.0-V8.8.0-IDENTITY-INTELLIGENCE-R1-20260924-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -646,10 +715,10 @@ jobs:
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.9.0-V8.7.0-CORRECT-TYPE-LIVE-IDENTITY-SIGNED.apk \
+            ARS-POS-1.10.0-V8.8.0-IDENTITY-INTELLIGENCE-R1-20260924-SIGNED.apk \
             > APK_SHA256.txt
 
-          echo "Build 1.9.0 (190), Phase 4.3.4.1, V8.7.0 Correct-Type Identity Routing + NON_ROD-to-NORMAL Rescue + Fast Live Identity; AI Engineer is ENGINEERING_PROPOSAL_GATED; Cloud Identity remains SHADOW; Self Learning is ACTIVE_CONFIRMED_ONLY; physical/quantity safety retained." \
+          echo "Build 1.10.0 (200), Phase 4.3.5.0, V8.8.0 Identity Intelligence + Ambiguous-Visual OCR + Regulatory Text Filtering + Weak-OCR Verified Visual Fallback; AI Engineer is ENGINEERING_PROPOSAL_GATED; Cloud Identity remains SHADOW; Self Learning is ACTIVE_CONFIRMED_ONLY; physical/quantity safety retained." \
             >> "$GITHUB_STEP_SUMMARY"
 
           echo "Install in-place; do not uninstall." \
@@ -658,13 +727,13 @@ jobs:
           echo "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." \
             >> "$GITHUB_STEP_SUMMARY"
 
-          echo "V8.7.0 device tests required: in-place 180->190 package/signer verification; AJARKAN KE ARS teaching; verified no-code/text/barcode visual-only recognition; 2-5 object prices/total + atomic quantity; one-to-one persistent binding on crossing rods; false-NORMAL/package-edge/duplicate regressions; memory/native pressure; gateway 2.1.1 online analysis/typed timeout." \
+          echo "V8.8.0 device tests required: in-place 190->200 package/signer verification; AJARKAN KE ARS teaching; verified no-code/text/barcode visual-only recognition; 2-5 object prices/total + atomic quantity; one-to-one persistent binding on crossing rods; false-NORMAL/package-edge/duplicate regressions; memory/native pressure; gateway 2.1.1 online analysis/typed timeout." \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.7.0-CORRECT-TYPE-LIVE-IDENTITY-190-OFFICIAL
+          name: ARS-POS-V8.8.0-IDENTITY-INTELLIGENCE-200-R1-20260924-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -673,7 +742,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.7.0-190-TEST-REPORTS
+          name: ARS-POS-V8.8.0-200-R1-20260924-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -687,7 +756,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v870-190.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v880-200.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
