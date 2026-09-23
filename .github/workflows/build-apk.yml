@@ -1,18 +1,18 @@
-name: ARS POS V8.8.0 Identity Intelligence 200 R1 20260924
+name: ARS POS V8.8.0 Identity Intelligence 200 R2 20260924
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R1_20260924.zip
-      - .github/workflows/build-apk_ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R1_20260924.yml
+      - ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R2_20260924.zip
+      - .github/workflows/build-apk_ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R2_20260924.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v880-identity-intelligence-200-r1-20260924-${{ github.ref }}
+  group: ars-pos-v880-identity-intelligence-200-r2-20260924-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SOURCE_ZIP: ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R1_20260924.zip
+      SOURCE_ZIP: ARS_POS_V8_8_0_IDENTITY_INTELLIGENCE_200_R2_20260924.zip
       SOURCE_SHA256: 5b5c4933e86041525690f09083a1e0bb877532e81efe2368db3f89ae9c60d7d8
 
     steps:
@@ -274,7 +274,7 @@ jobs:
           grep -Fq 'AMBIGUOUS_VISUAL_REQUIRES_OCR' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveIdentityPolicy.kt"
 
-          grep -Fq 'LiveIdentityPolicy.shouldRunNormalIdentity' \
+          grep -Fq 'shouldRunNormalIdentity(laneLong, liveVisualScore)' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
 
           grep -Fq 'IdentityTextPolicy.identityBearingText' \
@@ -419,9 +419,6 @@ jobs:
             node --test
           )
 
-          # Cloud Identity remains non-authoritative;
-          # self-learning is bounded/operator-confirmed;
-          # AI code changes stay release-gated.
           grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt" || {
               echo "::error::V8.8.0 confirmed-learning mode is not active as expected."
@@ -455,10 +452,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Do not use android-actions/setup-android here.
-      # The previous CI failure was caused by that action requesting obsolete
-      # package `tools`. GitHub's Ubuntu runner already carries Android command
-      # line tools, so resolve sdkmanager directly and install exact SDK packages.
       - name: Resolve Android SDK manager
         shell: bash
         run: |
@@ -474,7 +467,15 @@ jobs:
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
 
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+            SDKMANAGER_BIN="$(
+              find "$SDK_ROOT/cmdline-tools" \
+                -type f \
+                -name sdkmanager \
+                -perm -111 \
+                2>/dev/null \
+                | sort -V \
+                | tail -n 1 || true
+            )"
           fi
 
           if [ -z "$SDKMANAGER_BIN" ] || [ ! -x "$SDKMANAGER_BIN" ]; then
@@ -695,7 +696,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.0-V8.8.0-IDENTITY-INTELLIGENCE-R1-20260924-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.0-V8.8.0-IDENTITY-INTELLIGENCE-R2-20260924-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -715,7 +716,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.10.0-V8.8.0-IDENTITY-INTELLIGENCE-R1-20260924-SIGNED.apk \
+            ARS-POS-1.10.0-V8.8.0-IDENTITY-INTELLIGENCE-R2-20260924-SIGNED.apk \
             > APK_SHA256.txt
 
           echo "Build 1.10.0 (200), Phase 4.3.5.0, V8.8.0 Identity Intelligence + Ambiguous-Visual OCR + Regulatory Text Filtering + Weak-OCR Verified Visual Fallback; AI Engineer is ENGINEERING_PROPOSAL_GATED; Cloud Identity remains SHADOW; Self Learning is ACTIVE_CONFIRMED_ONLY; physical/quantity safety retained." \
@@ -733,7 +734,7 @@ jobs:
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.0-IDENTITY-INTELLIGENCE-200-R1-20260924-OFFICIAL
+          name: ARS-POS-V8.8.0-IDENTITY-INTELLIGENCE-200-R2-20260924-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -742,7 +743,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.0-200-R1-20260924-TEST-REPORTS
+          name: ARS-POS-V8.8.0-200-R2-20260924-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
