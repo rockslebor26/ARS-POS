@@ -1,18 +1,18 @@
-name: ARS POS V8.5.2 Production AI Gateway 172
+name: ARS POS V8.6.0 Adaptive Visual Learning 180
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_5_2_PRODUCTION_AI_GATEWAY_172.zip
+      - ARS_POS_V8_6_0_ADAPTIVE_VISUAL_LEARNING_180.zip
       - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v852-production-ai-gateway-172-${{ github.ref }}
+  group: ars-pos-v860-adaptive-visual-learning-180-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SOURCE_ZIP: ARS_POS_V8_5_2_PRODUCTION_AI_GATEWAY_172.zip
-      SOURCE_SHA256: 82fed9a24e83a9045f3027b22ea5c22db08913c494b59a3f82a7ea1e47634e04
+      SOURCE_ZIP: ARS_POS_V8_6_0_ADAPTIVE_VISUAL_LEARNING_180.zip
+      SOURCE_SHA256: 86b96affef8a6dcb45e9e1fc472a4ad6f30521a8a330fe74d97ed4c25661b273
 
     steps:
       - name: Checkout repository
@@ -29,7 +29,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact V8.5.2 Production AI Gateway source package
+      - name: Verify exact V8.6.0 Adaptive Visual Learning source package
         shell: bash
         run: |
           set -euo pipefail
@@ -42,7 +42,7 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v852-172.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v860-180.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
@@ -122,8 +122,18 @@ jobs:
           grep -Fq 'cross-lane bind forbidden' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PersistentPhysicalIdBinder.kt"
 
-          test -f "$PROJECT_DIR/PHASE4_3_3_2_V8_5_2_PRODUCTION_AI_GATEWAY.md" || {
-            echo "::error::Dokumen Production AI Gateway V8.5.2 tidak ditemukan."
+          test -f "$PROJECT_DIR/PHASE4_3_4_0_V8_6_0_ADAPTIVE_VISUAL_LEARNING.md" || {
+            echo "::error::Dokumen Adaptive Visual Learning V8.6.0 tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/RELEASE_180.md" || {
+            echo "::error::RELEASE_180.md tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsAdaptiveLearning.kt" || {
+            echo "::error::ArsAdaptiveLearning.kt tidak ditemukan."
             exit 1
           }
 
@@ -137,10 +147,12 @@ jobs:
             exit 1
           }
 
-          # Regression guard untuk Compose.
+          # Regression guard for Kotlin/Compose compile failure from the first 157 attempt.
+          # Modifier.weight(...) is a RowScope/ColumnScope API. Do not import
+          # the internal RowColumnParentData.weight symbol explicitly.
           if grep -RIn '^import androidx\.compose\.foundation\.layout\.weight$' \
             "$PROJECT_DIR/app/src/main/java" --include='*.kt'; then
-            echo "::error::Invalid explicit Compose weight import detected."
+            echo "::error::Invalid explicit Compose weight import detected. Use Modifier.weight inside RowScope/ColumnScope without this import."
             exit 1
           fi
 
@@ -189,7 +201,9 @@ jobs:
           grep -Fq 'ground_truth.jsonl' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsVisualEvidenceRecorder.kt"
 
-          # V8.5.2 Adaptive Hybrid Intelligence
+          # V8.6.0 adaptive-learning + AI Gateway guards.
+          # These modules may add evidence/recovery/teaching,
+          # but must not bypass existing recognition/quantity safety.
           for f in \
             ArsV850Config.kt \
             MlGuidedLocalRodRecovery.kt \
@@ -197,7 +211,7 @@ jobs:
             ArsSafetyKernel.kt \
             ArsDecisionEvidenceLedger.kt; do
             test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/$f" || {
-              echo "::error::V8.5.2 module $f tidak ditemukan."
+              echo "::error::V8.6.0 module $f tidak ditemukan."
               exit 1
             }
           done
@@ -214,7 +228,6 @@ jobs:
           grep -Fq 'DecisionEvidenceLedger' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsDecisionEvidenceLedger.kt"
 
-          # ARS AI Engineer
           for f in \
             ArsAiEngineer.kt \
             ArsAiEngineerClient.kt \
@@ -223,20 +236,12 @@ jobs:
             ArsAiLocalAdvisor.kt \
             ArsAiRequestSecurity.kt; do
             test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/$f" || {
-              echo "::error::V8.5.2 AI Engineer module $f tidak ditemukan."
+              echo "::error::V8.6.0 AI Engineer module $f tidak ditemukan."
               exit 1
             }
           done
 
-          # Production Gateway
-          for f in \
-            server.mjs \
-            security.mjs \
-            package.json \
-            Dockerfile \
-            DEPLOYMENT.md \
-            SECURITY.md \
-            .env.example; do
+          for f in server.mjs security.mjs package.json Dockerfile DEPLOYMENT.md SECURITY.md .env.example; do
             test -f "$PROJECT_DIR/ars-ai-gateway/$f" || {
               echo "::error::ARS AI Gateway production file $f tidak ditemukan."
               exit 1
@@ -246,8 +251,29 @@ jobs:
           grep -Fq 'ARS AI ENGINEER • ANALISIS & ROOT CAUSE' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
 
-          grep -Fq 'AI_ENGINEER_MODE = "ASSIST_READ_ONLY"' \
+          grep -Fq 'AI_ENGINEER_MODE = "ENGINEERING_PROPOSAL_GATED"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'FEATURE_CONFIRMED_VISUAL_TEACHING = true' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'AJARKAN KE ARS' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          grep -Fq 'NORMAL_VISUAL_MASTER_VERIFIED' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/SmartRecognitionEngine.kt"
+
+          grep -Fq 'LEARNED_CONFIRMED_' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+
+          grep -Fq 'reservedPersistentIds' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/MainActivity.kt"
+
+          grep -Fq 'RANCANG UPDATE SELANJUTNYA' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsAiEngineer.kt"
 
           grep -Fq 'FEATURE_AI_GATEWAY_SIGNED_REQUESTS = true' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
@@ -268,23 +294,24 @@ jobs:
             cd "$PROJECT_DIR/ars-ai-gateway"
             node --check server.mjs
             node --check security.mjs
+            node --check runtime-bundled.mjs
             node --test
           )
 
-          # Cloud Identity dan Self Learning tetap non-authoritative.
-          grep -Eq 'SHADOW|ASSIST_READ_ONLY' \
+          # Cloud Identity remains non-authoritative;
+          # self-learning is bounded/operator-confirmed;
+          # AI code changes stay release-gated.
+          grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt" || {
-              echo "::error::V8.5.2 cloud/self-learning mode is not protected by shadow policy."
+              echo "::error::V8.6.0 confirmed-learning mode is not active as expected."
               exit 1
             }
 
-          python3 "$PROJECT_DIR/tools/validate_source.py" \
-            --root "$PROJECT_DIR"
+          python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
 
           (
             cd "$PROJECT_DIR"
-            sha256sum -c SOURCE_FILES_SHA256.txt \
-              > "$RUNNER_TEMP/ars-source-checks.txt"
+            sha256sum -c SOURCE_FILES_SHA256.txt > "$RUNNER_TEMP/ars-source-checks.txt"
           )
 
           python3 -m unittest discover \
@@ -298,8 +325,7 @@ jobs:
             exit 1
           fi
 
-          echo "V8.5.2 Production AI Gateway source integrity and test-boundary validation: PASS" \
-            >> "$GITHUB_STEP_SUMMARY"
+          echo "V8.6.0 Adaptive Visual Learning source integrity and safety-boundary validation: PASS" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -307,6 +333,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Do not use android-actions/setup-android here.
+      # The previous CI failure was caused by that action requesting obsolete
+      # package `tools`. GitHub's Ubuntu runner already carries Android command
+      # line tools, so resolve sdkmanager directly and install exact SDK packages.
       - name: Resolve Android SDK manager
         shell: bash
         run: |
@@ -322,15 +352,13 @@ jobs:
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
 
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(
-              find "$SDK_ROOT/cmdline-tools" \
-                -type f \
-                -name sdkmanager \
-                -perm -111 \
-                2>/dev/null |
-              sort -V |
-              tail -n 1 || true
-            )"
+            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              -perm -111 \
+              2>/dev/null \
+              | sort -V \
+              | tail -n 1 || true)"
           fi
 
           if [ -z "$SDKMANAGER_BIN" ] || [ ! -x "$SDKMANAGER_BIN" ]; then
@@ -404,9 +432,9 @@ jobs:
           : "${ARS_RELEASE_CERT_SHA256:?Missing certificate secret}"
 
           EXPECTED=$(
-            printf '%s' "$ARS_RELEASE_CERT_SHA256" |
-            tr -d ':[:space:]' |
-            tr '[:lower:]' '[:upper:]'
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+              | tr -d ':[:space:]' \
+              | tr '[:lower:]' '[:upper:]'
           )
 
           OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
@@ -416,12 +444,12 @@ jobs:
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v852-172.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v860-180.jks"
 
           umask 077
 
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" |
-            base64 --decode > "$KEYSTORE"
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode > "$KEYSTORE"
 
           test -s "$KEYSTORE"
 
@@ -434,10 +462,10 @@ jobs:
             keytool -exportcert -rfc \
               -keystore "$KEYSTORE" \
               -storepass:env ARS_RELEASE_STORE_PASSWORD \
-              -alias "$ARS_RELEASE_KEY_ALIAS" |
-            openssl x509 -outform DER |
-            sha256sum |
-            awk '{print toupper($1)}'
+              -alias "$ARS_RELEASE_KEY_ALIAS" \
+            | openssl x509 -outform DER \
+            | sha256sum \
+            | awk '{print toupper($1)}'
           )
 
           if [ "$KEYSTORE_ACTUAL" != "$EXPECTED" ]; then
@@ -446,6 +474,7 @@ jobs:
           fi
 
           echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+
           echo "Official signer pre-build verification: PASS" \
             >> "$GITHUB_STEP_SUMMARY"
 
@@ -497,11 +526,19 @@ jobs:
 
           "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
 
-          grep -Fq "name='com.arspos.anglerriausyndicate'" apk-badging.txt
-          grep -Fq "versionCode='172'" apk-badging.txt
-          grep -Fq "versionName='1.7.2'" apk-badging.txt
+          grep -Fq \
+            "name='com.arspos.anglerriausyndicate'" \
+            apk-badging.txt
 
-          test 172 -gt 171
+          grep -Fq \
+            "versionCode='180'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionName='1.8.0'" \
+            apk-badging.txt
+
+          test 180 -gt 172
 
           "$SDK_BIN/apksigner" \
             verify \
@@ -509,20 +546,24 @@ jobs:
             --print-certs \
             "$APK" > signer-info.txt
 
-          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          "$SDK_BIN/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
 
           ACTUAL=$(
             awk -F': ' \
               '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' \
-              signer-info.txt |
-            tr -d ':[:space:]' |
-            tr '[:lower:]' '[:upper:]'
+              signer-info.txt \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
           )
 
           EXPECTED=$(
-            printf '%s' "$ARS_RELEASE_CERT_SHA256" |
-            tr -d ':[:space:]' |
-            tr '[:lower:]' '[:upper:]'
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+              | tr -d ':[:space:]' \
+              | tr '[:lower:]' '[:upper:]'
           )
 
           OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
@@ -538,7 +579,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.7.2-V8.5.2-PRODUCTION-AI-GATEWAY-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.8.0-V8.6.0-ADAPTIVE-VISUAL-LEARNING-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -558,10 +599,10 @@ jobs:
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.7.2-V8.5.2-PRODUCTION-AI-GATEWAY-SIGNED.apk \
+            ARS-POS-1.8.0-V8.6.0-ADAPTIVE-VISUAL-LEARNING-SIGNED.apk \
             > APK_SHA256.txt
 
-          echo "Build 1.7.2 (172), Phase 4.3.3.2, V8.5.2 Adaptive Hybrid Intelligence + Production ARS AI Gateway + Structured Diagnostics; AI Engineer is ASSIST_READ_ONLY; Cloud Identity/Self Learning remain SHADOW; V8.5 physical/quantity safety retained." \
+          echo "Build 1.8.0 (180), Phase 4.3.4.0, V8.6.0 Adaptive Visual Learning + Multi-Object Checkout Intelligence; AI Engineer is ENGINEERING_PROPOSAL_GATED; Cloud Identity remains SHADOW; Self Learning is ACTIVE_CONFIRMED_ONLY; physical/quantity safety retained." \
             >> "$GITHUB_STEP_SUMMARY"
 
           echo "Install in-place; do not uninstall." \
@@ -570,13 +611,13 @@ jobs:
           echo "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." \
             >> "$GITHUB_STEP_SUMMARY"
 
-          echo "V8.5.2 device tests required: AI Engineer Dashboard visibility, signed HTTPS gateway status, structured online analysis, local fallback, visual-evidence binding, replay rejection, persistent fragment fusion, false-NORMAL, duplicate quantity, memory/native pressure, and in-place update before finish." \
+          echo "V8.6.0 device tests required: in-place 172->180 package/signer verification; AJARKAN KE ARS teaching; verified no-code/text/barcode visual-only recognition; 2-5 object prices/total + atomic quantity; one-to-one persistent binding on crossing rods; false-NORMAL/package-edge/duplicate regressions; memory/native pressure; gateway 2.1.1 online analysis/typed timeout." \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.5.2-PRODUCTION-AI-GATEWAY-172-OFFICIAL
+          name: ARS-POS-V8.6.0-ADAPTIVE-VISUAL-LEARNING-180-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -585,7 +626,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.5.2-172-TEST-REPORTS
+          name: ARS-POS-V8.6.0-180-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -599,7 +640,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v852-172.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v860-180.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
