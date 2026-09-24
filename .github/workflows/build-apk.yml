@@ -1,18 +1,18 @@
-name: ARS POS V8.8.3 Event-Driven Visual Retrieval 205
+name: ARS POS V8.8.3 R1 Event-Driven Visual Retrieval 205
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_8_3_EVENT_DRIVEN_VISUAL_RETRIEVAL_205_20260924.zip
+      - ARS_POS_V8_8_3_R1_EVENT_DRIVEN_VISUAL_RETRIEVAL_205_20260924.zip
       - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v883-event-driven-retrieval-205-${{ github.ref }}
+  group: ars-pos-v883-r1-event-driven-retrieval-205-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SOURCE_ZIP: ARS_POS_V8_8_3_EVENT_DRIVEN_VISUAL_RETRIEVAL_205_20260924.zip
-      SOURCE_SHA256: 3af475f08156ba0177f8bcf7a8fbe7d2246978e3996e780578689c74fa3e08fc
+      SOURCE_ZIP: ARS_POS_V8_8_3_R1_EVENT_DRIVEN_VISUAL_RETRIEVAL_205_20260924.zip
+      SOURCE_SHA256: 0c67d86afc2e1f1e37a4eff108d29e840c5856141c125df7aeb1a1a824404a80
       EXPECTED_PACKAGE: com.arspos.anglerriausyndicate
       EXPECTED_VERSION_CODE: '205'
       EXPECTED_VERSION_NAME: '1.10.5'
@@ -47,7 +47,7 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v883-205.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v883-r1-205.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
@@ -58,7 +58,8 @@ jobs:
             tools/validate_source.py \
             SOURCE_FILES_SHA256.txt \
             PHASE4_3_5_3_V8_8_3_EVENT_DRIVEN_VISUAL_RETRIEVAL.md \
-            RELEASE_205.md; do
+            RELEASE_205.md \
+            RELEASE_205_R1.md; do
             test -f "$PROJECT_DIR/$f" || {
               echo "::error::File release wajib tidak ditemukan: $f"
               exit 1
@@ -89,7 +90,7 @@ jobs:
           grep -Fq 'versionName = "1.10.5"' "$PROJECT_DIR/app/build.gradle.kts"
           grep -Fq 'const val PHASE = "4.3.5.3"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
           grep -Fq 'const val ENGINE = "V8.8.3"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'const val RELEASE_REVISION = "EVENT_DRIVEN_VISUAL_RETRIEVAL_LIVE_FINAL_CONVERGENCE"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+          grep -Fq 'const val RELEASE_REVISION = "EVENT_DRIVEN_VISUAL_RETRIEVAL_LIVE_FINAL_CONVERGENCE_R1_BUILD_FIX"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
           grep -Fq 'AI_ENGINEER_MODE = "DEV_CENTER_DIAGNOSTIC_ONLY"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
           grep -Fq 'FEATURE_AI_IN_CRITICAL_SCAN_PATH = false' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
           grep -Fq 'FEATURE_EVENT_DRIVEN_IDENTITY = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
@@ -98,6 +99,7 @@ jobs:
           grep -Fq 'liveOcrInFlight' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           grep -Fq 'bestFrameStore.snapshot' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
           grep -Fq 'SCAN_LIVE_FINAL_CONVERGENCE' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
+          grep -Fq 'LiveIdentityScheduler(maxTargetsPerCycle = 1)' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
           grep -Fq 'CatalogCandidatePolicy.selectProductIds' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           grep -Fq 'UnifiedRecoveryCoordinator.selectFinalEvidencePath' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
           grep -Fq 'UnifiedDecisionKernel.decide' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
@@ -200,7 +202,7 @@ jobs:
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v883-205.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v883-r1-205.jks"
           umask 077
           printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           test -s "$KEYSTORE"
@@ -243,7 +245,23 @@ jobs:
             --no-daemon \
             --stacktrace
 
-      - name: Run regression tests and build signed release APK
+      - name: Run physical-truth JVM regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          mkdir -p validation
+          gradle :physicaltruth-jvm:test --no-daemon --stacktrace 2>&1 | tee validation/github-physicaltruth-jvm.log
+
+      - name: Run Android unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          mkdir -p validation
+          gradle :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee validation/github-app-unit-tests.log
+
+      - name: Build signed release APK
         shell: bash
         env:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
@@ -252,12 +270,23 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          gradle \
-            :physicaltruth-jvm:test \
-            :app:testDebugUnitTest \
-            :app:assembleRelease \
-            --no-daemon \
-            --stacktrace
+          mkdir -p validation
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee validation/github-assemble-release.log
+
+      - name: Print failed test summary
+        if: failure() && env.PROJECT_DIR != ''
+        shell: bash
+        run: |
+          set +e
+          echo "===== FAILED TEST XML SUMMARY ====="
+          find "$PROJECT_DIR" -type f -path '*/build/test-results/*/TEST-*.xml' -print0 \
+            | xargs -0 -r grep -HnE '<failure|<error' || true
+          echo "===== GRADLE LOG TAILS ====="
+          for f in "$PROJECT_DIR"/validation/github-*.log; do
+            [ -f "$f" ] || continue
+            echo "----- $f -----"
+            tail -n 120 "$f" || true
+          done
 
       - name: Verify package version signer and alignment
         shell: bash
@@ -287,7 +316,7 @@ jobs:
           test "$ACTUAL" = "$OFFICIAL_CERT_SHA256"
 
           mkdir -p "$GITHUB_WORKSPACE/release-output"
-          OUT_APK="$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.5-V8.8.3-EVENT-DRIVEN-RETRIEVAL-205-20260924-SIGNED.apk"
+          OUT_APK="$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.5-V8.8.3-R1-EVENT-DRIVEN-RETRIEVAL-205-20260924-SIGNED.apk"
           cp "$APK" "$OUT_APK"
           cp signer-info.txt "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
           cp apk-badging.txt "$GITHUB_WORKSPACE/release-output/APK_METADATA.txt"
@@ -296,7 +325,7 @@ jobs:
           cp validation/validation-status.json "$GITHUB_WORKSPACE/release-output/SOURCE_VALIDATION_STATUS.json"
           sha256sum "$OUT_APK" > "$GITHUB_WORKSPACE/release-output/APK_SHA256.txt"
 
-          echo "Build 1.10.5 (205) / Phase 4.3.5.3 / V8.8.3: PASS." >> "$GITHUB_STEP_SUMMARY"
+          echo "Build 1.10.5 (205) / Phase 4.3.5.3 / V8.8.3 R1: PASS." >> "$GITHUB_STEP_SUMMARY"
           echo "Detect-many/identify-selectively scheduler, candidate memory, single-flight OCR, high-resolution ambiguity recovery and live/final convergence are active; AI Engineer remains outside the critical scan path." >> "$GITHUB_STEP_SUMMARY"
           echo "Cloud Identity=SHADOW; Self Learning=ACTIVE_CONFIRMED_ONLY; all 14 thresholds unchanged." >> "$GITHUB_STEP_SUMMARY"
           echo "Install in-place only; do not uninstall the production app." >> "$GITHUB_STEP_SUMMARY"
@@ -304,7 +333,7 @@ jobs:
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.3-EVENT-DRIVEN-RETRIEVAL-205-OFFICIAL
+          name: ARS-POS-V8.8.3-R1-EVENT-DRIVEN-RETRIEVAL-205-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -313,7 +342,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.3-205-TEST-REPORTS
+          name: ARS-POS-V8.8.3-R1-205-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -327,7 +356,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v883-205.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v883-r1-205.jks"
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
               shred -u "$KEYSTORE" || rm -f -- "$KEYSTORE"
