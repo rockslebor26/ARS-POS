@@ -1,18 +1,18 @@
-name: ARS POS V8.8.1 Deterministic Object Intelligence 201 20260924
+name: ARS POS V8.8.1 R1 Build Integrity Recovery 202 20260924
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_8_1_DETERMINISTIC_OBJECT_INTELLIGENCE_201_20260924.zip
-      - .github/workflows/build-apk_ARS_POS_V8_8_1_DETERMINISTIC_OBJECT_INTELLIGENCE_201_20260924.yml
+      - ARS_POS_V8_8_1_R1_BUILD_INTEGRITY_RECOVERY_202_20260924.zip
+      - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v881-deterministic-object-intelligence-201-20260924-${{ github.ref }}
+  group: ars-pos-v881-r1-build-integrity-recovery-202-20260924-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SOURCE_ZIP: ARS_POS_V8_8_1_DETERMINISTIC_OBJECT_INTELLIGENCE_201_20260924.zip
-      SOURCE_SHA256: 1d66e46e411776566194804c28e24f370692195307de19899ba5e0f86b61414a
+      SOURCE_ZIP: ARS_POS_V8_8_1_R1_BUILD_INTEGRITY_RECOVERY_202_20260924.zip
+      SOURCE_SHA256: 9fe4ebeb70355b8eb75532443b9a2e49cae65b7cdc1473467f0188047ed7da15
 
     steps:
       - name: Checkout repository
@@ -29,7 +29,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify exact V8.8.1 Deterministic Object Intelligence source package
+      - name: Verify exact V8.8.1-R1 Build Integrity Recovery source package
         shell: bash
         run: |
           set -euo pipefail
@@ -42,7 +42,7 @@ jobs:
           printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v881-201.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v881-r1-202.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
@@ -50,44 +50,68 @@ jobs:
             echo "::error::settings.gradle.kts tidak ditemukan di root ZIP."
             exit 1
           }
+
           test -f "$PROJECT_DIR/build.gradle.kts" || {
             echo "::error::build.gradle.kts tidak ditemukan di root ZIP."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/build.gradle.kts" || {
             echo "::error::app/build.gradle.kts tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/build.gradle.kts" || {
             echo "::error::physicaltruth-jvm/build.gradle.kts tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/RodMaterialEvidenceTest.kt" || {
             echo "::error::RodMaterialEvidenceTest.kt JVM module tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/PhysicalImageEvidenceTest.kt" || {
             echo "::error::PhysicalImageEvidenceTest.kt JVM module tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/physicaltruth-jvm/src/test/kotlin/com/arspos/anglerriausyndicate/PackageEdgeEvidenceTest.kt" || {
             echo "::error::PackageEdgeEvidenceTest.kt JVM regression tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PackageEdgePolicy.kt" || {
             echo "::error::PackageEdgePolicy.kt tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/RodEndpointProfile.kt" || {
             echo "::error::RodEndpointProfile.kt tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveScenePreview.kt" || {
             echo "::error::LiveScenePreview.kt tidak ditemukan."
             exit 1
           }
-          test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicatel/LiveSmartScanCamera.kt" || {
-            echo "::error::LiveSmartScanCamera.kt tidak ditemukan."
+
+          LIVE_CAMERA="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
+
+          test -f "$LIVE_CAMERA" || {
+            echo "::error::LiveSmartScanCamera.kt tidak ditemukan pada canonical package path."
+            echo "::group::LiveSmartScanCamera source-layout diagnostic"
+            find "$PROJECT_DIR/app/src/main/java" \
+              -type f \
+              -name 'LiveSmartScanCamera.kt' \
+              -print || true
+
+            find "$PROJECT_DIR/app/src/main/java/com/arspos" \
+              -maxdepth 5 \
+              -type d \
+              -print | sort || true
+
+            echo "::endgroup::"
             exit 1
           }
 
@@ -135,14 +159,17 @@ jobs:
             echo "::error::Bound V8.6.0 NORMAL bottle regression fixture tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/NormalProposalPurityPolicy.kt" || {
             echo "::error::NormalProposalPurityPolicy.kt tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PersistentPhysicalIdBinder.kt" || {
             echo "::error::PersistentPhysicalIdBinder.kt tidak ditemukan."
             exit 1
           }
+
           test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/TemporalPhysicalConsensus.kt" || {
             echo "::error::TemporalPhysicalConsensus.kt tidak ditemukan."
             exit 1
@@ -159,8 +186,13 @@ jobs:
             exit 1
           }
 
-          test -f "$PROJECT_DIR/RELEASE_201.md" || {
-            echo "::error::RELEASE_201.md tidak ditemukan."
+          test -f "$PROJECT_DIR/RELEASE_202.md" || {
+            echo "::error::RELEASE_202.md tidak ditemukan."
+            exit 1
+          }
+
+          test -f "$PROJECT_DIR/PHASE4_3_5_1_V8_8_1_R1_BUILD_INTEGRITY_RECOVERY.md" || {
+            echo "::error::Dokumen V8.8.1-R1 Build Integrity Recovery tidak ditemukan."
             exit 1
           }
 
@@ -180,7 +212,9 @@ jobs:
           }
 
           if grep -RIn '^import androidx\.compose\.foundation\.layout\.weight$' \
-            "$PROJECT_DIR/app/src/main/java" --include='*.kt'; then
+            "$PROJECT_DIR/app/src/main/java" \
+            --include='*.kt'; then
+
             echo "::error::Invalid explicit Compose weight import detected. Use Modifier.weight inside RowScope/ColumnScope without this import."
             exit 1
           fi
@@ -301,7 +335,8 @@ jobs:
             MlGuidedLocalRodRecovery.kt \
             PersistentPhysicalFragmentFusion.kt \
             ArsSafetyKernel.kt \
-            ArsDecisionEvidenceLedger.kt; do
+            ArsDecisionEvidenceLedger.kt
+          do
             test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/$f" || {
               echo "::error::V8.8.1 module $f tidak ditemukan."
               exit 1
@@ -326,14 +361,23 @@ jobs:
             ArsAiGatewaySettings.kt \
             ArsAiEvidencePacket.kt \
             ArsAiLocalAdvisor.kt \
-            ArsAiRequestSecurity.kt; do
+            ArsAiRequestSecurity.kt
+          do
             test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/$f" || {
               echo "::error::V8.8.1 AI Engineer module $f tidak ditemukan."
               exit 1
             }
           done
 
-          for f in server.mjs security.mjs package.json Dockerfile DEPLOYMENT.md SECURITY.md .env.example; do
+          for f in \
+            server.mjs \
+            security.mjs \
+            package.json \
+            Dockerfile \
+            DEPLOYMENT.md \
+            SECURITY.md \
+            .env.example
+          do
             test -f "$PROJECT_DIR/ars-ai-gateway/$f" || {
               echo "::error::ARS AI Gateway production file $f tidak ditemukan."
               exit 1
@@ -352,7 +396,10 @@ jobs:
           grep -Fq 'ENGINE = "V8.8.1"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
 
-          grep -Fq 'VERSION_CODE = 201' \
+          grep -Fq 'RELEASE_REVISION = "R1_BUILD_INTEGRITY_RECOVERY"' \
+            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq 'VERSION_CODE = 202' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
 
           grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
@@ -393,6 +440,7 @@ jobs:
 
           (
             cd "$PROJECT_DIR/ars-ai-gateway"
+
             node --check server.mjs
             node --check security.mjs
             node --check runtime-bundled.mjs
@@ -401,7 +449,7 @@ jobs:
 
           grep -Fq 'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt" || {
-              echo "::error::V8.8.1 confirmed-learning mode is not active as expected."
+              echo "::error::V8.8.1-R1 confirmed-learning mode is not active as expected."
               exit 1
             }
 
@@ -431,11 +479,13 @@ jobs:
           grep -Fq 'AUTOMATIC_SCAN_FAILURE' \
             "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
 
-          python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
+          python3 "$PROJECT_DIR/tools/validate_source.py" \
+            --root "$PROJECT_DIR"
 
           (
             cd "$PROJECT_DIR"
-            sha256sum -c SOURCE_FILES_SHA256.txt > "$RUNNER_TEMP/ars-source-checks.txt"
+            sha256sum -c SOURCE_FILES_SHA256.txt \
+              > "$RUNNER_TEMP/ars-source-checks.txt"
           )
 
           python3 -m unittest discover \
@@ -445,11 +495,13 @@ jobs:
           if grep -RInE 'javax\.imageio|ImageIO' \
             "$PROJECT_DIR/app/src/test" \
             --include='*.kt'; then
+
             echo "::error::Java SE ImageIO tidak boleh berada di Android app/src/test."
             exit 1
           fi
 
-          echo "V8.8.1 Deterministic Object Intelligence source integrity and safety-boundary validation: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "V8.8.1-R1 Build Integrity Recovery source integrity and safety-boundary validation: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -463,19 +515,33 @@ jobs:
           set -euo pipefail
 
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
           if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
             echo "::error::Android SDK root tidak tersedia pada GitHub runner."
             exit 1
           fi
 
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
+
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+            SDKMANAGER_BIN="$(
+              find "$SDK_ROOT/cmdline-tools" \
+                -type f \
+                -name sdkmanager \
+                -perm -111 \
+                2>/dev/null \
+              | sort -V \
+              | tail -n 1 || true
+            )"
           fi
 
           if [ -z "$SDKMANAGER_BIN" ] || [ ! -x "$SDKMANAGER_BIN" ]; then
             echo "::error::sdkmanager tidak ditemukan pada Android SDK runner."
-            find "$SDK_ROOT" -maxdepth 4 -type f -name sdkmanager -print || true
+            find "$SDK_ROOT" \
+              -maxdepth 4 \
+              -type f \
+              -name sdkmanager \
+              -print || true
             exit 1
           fi
 
@@ -494,9 +560,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          yes | "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          yes | "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            --licenses >/dev/null || true
 
-          "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" \
+          "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
@@ -540,7 +609,12 @@ jobs:
           : "${ARS_RELEASE_KEY_PASSWORD:?Missing key password secret}"
           : "${ARS_RELEASE_CERT_SHA256:?Missing certificate secret}"
 
-          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          EXPECTED="$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+              | tr -d ':[:space:]' \
+              | tr '[:lower:]' '[:upper:]'
+          )"
+
           OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
 
           test "$EXPECTED" = "$OFFICIAL" || {
@@ -548,18 +622,23 @@ jobs:
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v881-201.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v881-r1-202.jks"
+
           umask 077
 
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$KEYSTORE"
+
           test -s "$KEYSTORE"
 
           keytool -list \
             -keystore "$KEYSTORE" \
             -storepass:env ARS_RELEASE_STORE_PASSWORD \
-            -alias "$ARS_RELEASE_KEY_ALIAS" >/dev/null
+            -alias "$ARS_RELEASE_KEY_ALIAS" \
+            >/dev/null
 
-          KEYSTORE_ACTUAL=$(
+          KEYSTORE_ACTUAL="$(
             keytool -exportcert -rfc \
               -keystore "$KEYSTORE" \
               -storepass:env ARS_RELEASE_STORE_PASSWORD \
@@ -567,15 +646,18 @@ jobs:
             | openssl x509 -outform DER \
             | sha256sum \
             | awk '{print toupper($1)}'
-          )
+          )"
 
           if [ "$KEYSTORE_ACTUAL" != "$EXPECTED" ]; then
             echo "::error::Keystore signer mismatch. Expected $EXPECTED, actual $KEYSTORE_ACTUAL"
             exit 1
           fi
 
-          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
-          echo "Official signer pre-build verification: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" \
+            >> "$GITHUB_ENV"
+
+          echo "Official signer pre-build verification: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run physical truth JVM evidence replay
         shell: bash
@@ -589,7 +671,8 @@ jobs:
             --no-daemon \
             --stacktrace
 
-          echo "Physical Truth JVM evidence replay: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Physical Truth JVM evidence replay: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run Android unit tests and build signed APK
         shell: bash
@@ -618,27 +701,53 @@ jobs:
           cd "$PROJECT_DIR"
 
           APK=app/build/outputs/apk/release/app-release.apk
+
           test -s "$APK"
 
           SDK_BIN="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 
-          "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
+          "$SDK_BIN/aapt" \
+            dump badging "$APK" \
+            > apk-badging.txt
 
-          grep -Fq "name='com.arspos.anglerriausyndicate'" apk-badging.txt
-          grep -Fq "versionCode='201'" apk-badging.txt
-          grep -Fq "versionName='1.10.1'" apk-badging.txt
+          grep -Fq "name='com.arspos.anglerriausyndicate'" \
+            apk-badging.txt
 
-          test 201 -gt 200
+          grep -Fq "versionCode='202'" \
+            apk-badging.txt
 
-          "$SDK_BIN/apksigner" verify \
+          grep -Fq "versionName='1.10.2'" \
+            apk-badging.txt
+
+          test 202 -gt 201
+
+          "$SDK_BIN/apksigner" \
+            verify \
             --verbose \
             --print-certs \
-            "$APK" > signer-info.txt
+            "$APK" \
+            > signer-info.txt
 
-          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          "$SDK_BIN/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
 
-          ACTUAL=$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
-          EXPECTED=$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')
+          ACTUAL="$(
+            awk -F': ' \
+              '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' \
+              signer-info.txt \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
+          )"
+
+          EXPECTED="$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+              | tr -d ':[:space:]' \
+              | tr '[:lower:]' '[:upper:]'
+          )"
+
           OFFICIAL="AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB"
 
           test -n "$ACTUAL" || {
@@ -652,7 +761,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/release-output"
 
           cp "$APK" \
-            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.1-V8.8.1-DETERMINISTIC-OBJECT-INTELLIGENCE-201-20260924-SIGNED.apk"
+            "$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.2-V8.8.1-R1-BUILD-INTEGRITY-RECOVERY-202-20260924-SIGNED.apk"
 
           cp signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
@@ -672,21 +781,25 @@ jobs:
           cd "$GITHUB_WORKSPACE/release-output"
 
           sha256sum \
-            ARS-POS-1.10.1-V8.8.1-DETERMINISTIC-OBJECT-INTELLIGENCE-201-20260924-SIGNED.apk \
+            ARS-POS-1.10.2-V8.8.1-R1-BUILD-INTEGRITY-RECOVERY-202-20260924-SIGNED.apk \
             > APK_SHA256.txt
 
-          echo "Build 1.10.1 (201), Phase 4.3.5.1, V8.8.1 Deterministic Object Intelligence + ViewModel Finalization + Locked Scene Continuity + Temporal Identity Hold + Bounded OCR Reuse + Adaptive Rod Axis Width + AI Failure Handoff; AI Engineer is ENGINEERING_PROPOSAL_GATED; Cloud Identity remains SHADOW; Self Learning is ACTIVE_CONFIRMED_ONLY; physical/quantity safety retained." >> "$GITHUB_STEP_SUMMARY"
+          echo "Build 1.10.2 (202), Phase 4.3.5.1, V8.8.1-R1 Build Integrity Recovery + Deterministic Object Intelligence + ViewModel Finalization + Locked Scene Continuity + Temporal Identity Hold + Bounded OCR Reuse + Adaptive Rod Axis Width + AI Failure Handoff; AI Engineer is ENGINEERING_PROPOSAL_GATED; Cloud Identity remains SHADOW; Self Learning is ACTIVE_CONFIRMED_ONLY; physical/quantity safety retained." \
+            >> "$GITHUB_STEP_SUMMARY"
 
-          echo "Install in-place; do not uninstall." >> "$GITHUB_STEP_SUMMARY"
+          echo "Install in-place; do not uninstall." \
+            >> "$GITHUB_STEP_SUMMARY"
 
-          echo "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." >> "$GITHUB_STEP_SUMMARY"
+          echo "JVM evidence replay + Android tests + release build + package/version/signer/alignment: PASS." \
+            >> "$GITHUB_STEP_SUMMARY"
 
-          echo "V8.8.1 device tests required: in-place 200->201 package/signer verification; 100 lock/finalize cycles with zero Compose cancellation/incomplete sessions; NORMAL first-match latency; identity-flicker hold; 2-5 object prices/total + atomic quantity; one-to-one persistent binding on crossing rods; real-rod/background-grout regression; false-NORMAL/package-edge/duplicate regressions; memory/native pressure; automatic AI failure handoff with typed gateway/local-fallback result." >> "$GITHUB_STEP_SUMMARY"
+          echo "V8.8.1-R1 device tests required: in-place 200/201->202 package/signer verification; 100 lock/finalize cycles with zero Compose cancellation/incomplete sessions; NORMAL first-match latency; identity-flicker hold; 2-5 object prices/total + atomic quantity; one-to-one persistent binding on crossing rods; real-rod/background-grout regression; false-NORMAL/package-edge/duplicate regressions; memory/native pressure; automatic AI failure handoff with typed gateway/local-fallback result." \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.1-DETERMINISTIC-OBJECT-INTELLIGENCE-201-20260924-OFFICIAL
+          name: ARS-POS-V8.8.1-R1-BUILD-INTEGRITY-RECOVERY-202-20260924-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -695,7 +808,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.1-201-20260924-TEST-REPORTS
+          name: ARS-POS-V8.8.1-R1-202-20260924-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -709,7 +822,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v881-201.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v881-r1-202.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
