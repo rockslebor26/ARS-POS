@@ -1,40 +1,56 @@
-name: ARS POS V8.8.7 Canonical Identity Continuity Temporal Evidence Convergence R1 209
+name: ARS POS V8.8.8 Authoritative Canonical Evidence Handoff Multi Instance Normal Truth R1 210
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_8_7_CANONICAL_IDENTITY_CONTINUITY_TEMPORAL_EVIDENCE_CONVERGENCE_R1_209_20260928.zip
+      - ARS_POS_V8_8_8_AUTHORITATIVE_CANONICAL_EVIDENCE_HANDOFF_MULTI_INSTANCE_NORMAL_TRUTH_R1_210_20260929.zip
       - .github/workflows/build-apk.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v887-canonical-identity-convergence-209-${{ github.ref }}
+  group: ars-pos-v888-authoritative-evidence-210-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
     env:
-      SOURCE_ZIP: ARS_POS_V8_8_7_CANONICAL_IDENTITY_CONTINUITY_TEMPORAL_EVIDENCE_CONVERGENCE_R1_209_20260928.zip
-      SOURCE_SHA256: aa2b3e2f8c6ee39f60cfca48011498b3ad12fc30b7f8b6de6a86ca1668b8efe4
+      SOURCE_ZIP: ARS_POS_V8_8_8_AUTHORITATIVE_CANONICAL_EVIDENCE_HANDOFF_MULTI_INSTANCE_NORMAL_TRUTH_R1_210_20260929.zip
+
       EXPECTED_PACKAGE: com.arspos.anglerriausyndicate
-      EXPECTED_VERSION_CODE: '209'
-      EXPECTED_VERSION_NAME: '1.10.9'
-      PREVIOUS_VERSION_CODE: '208'
+
+      EXPECTED_VERSION_CODE: '210'
+      EXPECTED_VERSION_NAME: '1.11.0'
+      PREVIOUS_VERSION_CODE: '209'
+
+      EXPECTED_PHASE: '4.3.5.8'
+      EXPECTED_ENGINE: 'V8.8.8'
+      EXPECTED_RELEASE_REVISION: 'AUTHORITATIVE_CANONICAL_EVIDENCE_HANDOFF_MULTI_INSTANCE_NORMAL_TRUTH_R1'
+
       OFFICIAL_CERT_SHA256: AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB
 
     steps:
+
+      # ============================================================
+      # 1. CHECKOUT
+      # ============================================================
+
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
           persist-credentials: false
 
-      - name: Verify exact source package
+      # ============================================================
+      # 2. VERIFY SOURCE ZIP
+      # ============================================================
+
+      - name: Verify exact V8.8.8 source package
         shell: bash
         run: |
           set -euo pipefail
@@ -44,12 +60,19 @@ jobs:
             exit 1
           }
 
-          printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
+          echo "SOURCE ZIP:"
+          sha256sum "$SOURCE_ZIP"
+
           unzip -t "$SOURCE_ZIP" >/dev/null
 
-          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v887-209.XXXXXX")
+          PROJECT_DIR=$(mktemp -d "$RUNNER_TEMP/ars-v888-210.XXXXXX")
           unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          # ----------------------------------------------------------
+          # Required release files
+          # ----------------------------------------------------------
 
           for f in \
             settings.gradle.kts \
@@ -57,109 +80,480 @@ jobs:
             app/build.gradle.kts \
             tools/validate_source.py \
             SOURCE_FILES_SHA256.txt \
-            PHASE4_3_5_7_V8_8_7_CANONICAL_IDENTITY_CONTINUITY_TEMPORAL_EVIDENCE_CONVERGENCE_R1.md \
-            RELEASE_209.md \
-            BUILD_V887.md; do
+            PHASE4_3_5_8_V8_8_8_AUTHORITATIVE_CANONICAL_EVIDENCE_HANDOFF_MULTI_INSTANCE_NORMAL_TRUTH_R1.md \
+            RELEASE_210.md \
+            BUILD_V888.md; do
+
             test -f "$PROJECT_DIR/$f" || {
               echo "::error::File release wajib tidak ditemukan: $f"
               exit 1
             }
+
           done
 
-          python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
+          # ----------------------------------------------------------
+          # Internal source integrity
+          # ----------------------------------------------------------
+
+          python3 "$PROJECT_DIR/tools/validate_source.py" \
+            --root "$PROJECT_DIR"
 
           (
             cd "$PROJECT_DIR"
-            sha256sum -c SOURCE_FILES_SHA256.txt > "$RUNNER_TEMP/ars-source-checks.txt"
+            sha256sum -c SOURCE_FILES_SHA256.txt \
+              > "$RUNNER_TEMP/ars-source-checks.txt"
           )
+
+          # ----------------------------------------------------------
+          # Python validation tests
+          # ----------------------------------------------------------
 
           python3 -m unittest discover \
             -s "$PROJECT_DIR/tools" \
             -p 'test_*.py'
 
+          # ----------------------------------------------------------
+          # ARS AI Gateway validation
+          # ----------------------------------------------------------
+
           (
             cd "$PROJECT_DIR/ars-ai-gateway"
+
             node --check server.mjs
             node --check security.mjs
             node --check runtime-bundled.mjs
+
             node --test
           )
 
-          grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' "$PROJECT_DIR/app/build.gradle.kts"
-          grep -Fq 'versionCode = 209' "$PROJECT_DIR/app/build.gradle.kts"
-          grep -Fq 'versionName = "1.10.9"' "$PROJECT_DIR/app/build.gradle.kts"
-          grep -Fq 'const val PHASE = "4.3.5.7"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'const val ENGINE = "V8.8.7"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'const val RELEASE_REVISION = "CANONICAL_IDENTITY_CONTINUITY_TEMPORAL_EVIDENCE_CONVERGENCE_R1"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'AI_ENGINEER_MODE = "DEV_CENTER_DIAGNOSTIC_ONLY"' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_AI_IN_CRITICAL_SCAN_PATH = false' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'LiveIdentityScheduler.choose' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
-          grep -Fq 'liveHighResolutionIdentity' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
-          grep -Fq 'FEATURE_LIVE_FINAL_DECISION_CONVERGENCE = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_SINGLE_FLIGHT_OCR = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_STICKY_PHYSICAL_LOCK_UI = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_USEFUL_HIGH_RES_GAIN = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_DISCRIMINATIVE_MICRO_OCR = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'enabled = cameraReady && lockUiState.canLock' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
-          grep -Fq 'hasUsefulResolutionGain' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'analyzeDiscriminativeNormalIdentity' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'CatalogCandidatePolicy.selectProductIds' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'UnifiedRecoveryCoordinator.selectFinalEvidencePath' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'UnifiedDecisionKernel.decide' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'FEATURE_POST_RECOVERY_CANONICAL_NORMAL = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_NORMAL_COMPLETENESS_GATE = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_STICKY_IDENTITY_OWNER = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_OCR_UTILITY_ROUTER = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_FRESH_LOCK_FRAME_GATE = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_SELECTED_TRACK_FINALIZATION = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_IDENTITY_QUANTITY_DECOUPLING = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_IDENTITY_OWNER_FALLBACK = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_SHARED_FOREGROUND_MERGE_VETO = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_ELONGATED_AMBIGUOUS_LANE = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_GROUND_TRUTH_ENFORCEMENT = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_VISUAL_DIAGNOSTIC_RECORDER = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_ONE_TAP_CHATGPT_EVIDENCE = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_PROJECT_TARGET_LOCK = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_CANONICAL_IDENTITY_CONTINUITY = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_TEMPORAL_TOP_K_EVIDENCE_FUSION = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_NORMAL_LOCAL_COMPLETENESS_V2 = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'FEATURE_ROLE_DISCRIMINATIVE_LONG_IDENTITY = true' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          grep -Fq 'canonicalIdentityId' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/CanonicalIdentityContinuity.kt"
-          grep -Fq 'identityKeyByTrack' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveIdentityScheduler.kt"
-          grep -Fq 'LOCAL_EXPANDED_ROI' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/NormalLocalCompleteness.kt"
-          grep -Fq 'roleDiscriminativeDeltaByProduct' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ProductVisualMatcher.kt"
-          grep -Fq 'PROJECT TARGET / PHASE GATE' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsDevCenter.kt"
-          grep -Fq 'longPhysicalTrusted' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'operatorConfirmedProductId' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsVisualEvidenceRecorder.kt"
-          grep -Fq 'CanonicalNormalResolver.resolve' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
-          grep -Fq 'NormalCompletenessPolicy.evaluate' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/CanonicalNormalResolver.kt"
-          grep -Fq 'LiveOcrUtilityPolicy.evaluate' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'SCAN_SELECTED_TRACK_FINALIZATION' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'freshFrameForced' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
-          grep -Fq 'finalCandidateScore' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-          grep -Fq 'identityMatch = recognitionMatch' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          grep -Fq 'LIVE_IDENTITY_OWNER_FALLBACK' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
-          grep -Fq 'sharedForegroundMergeVeto' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/CanonicalNormalResolver.kt"
-          grep -Fq 'ElongatedAmbiguousPolicy::mark' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
-          grep -Fq 'TEACH_CONFIRMED_BEFORE_PROMOTION' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-          grep -Fq 'FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsDiagnosticScreenRecorder.kt"
-          grep -Fq 'CHATGPT + EVIDENCE ZIP' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsDevCenter.kt"
-          grep -Fq 'automatic_failure_bookmarks.jsonl' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsVisualEvidenceRecorder.kt"
-          grep -Fq 'android:foregroundServiceType="mediaProjection"' "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+          # ==========================================================
+          # RELEASE IDENTITY CONTRACT
+          # ==========================================================
 
-          # V8.8.7 retains the V8.8.4 R1 compile-contract regression guard.
-          ROI_POLICY="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveIdentityRoiPolicy.kt"
-          if grep -Fq 'LiveIdentityStage' "$ROI_POLICY"; then
-            echo "::error::Obsolete undefined LiveIdentityStage reference detected in LiveIdentityRoiPolicy.kt."
+          grep -Fq \
+            'applicationId = "com.arspos.anglerriausyndicate"' \
+            "$PROJECT_DIR/app/build.gradle.kts"
+
+          grep -Fq \
+            'versionCode = 210' \
+            "$PROJECT_DIR/app/build.gradle.kts"
+
+          grep -Fq \
+            'versionName = "1.11.0"' \
+            "$PROJECT_DIR/app/build.gradle.kts"
+
+          CONFIG="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
+
+          grep -Fq \
+            'const val PHASE = "4.3.5.8"' \
+            "$CONFIG"
+
+          grep -Fq \
+            'const val ENGINE = "V8.8.8"' \
+            "$CONFIG"
+
+          grep -Fq \
+            'const val RELEASE_REVISION = "AUTHORITATIVE_CANONICAL_EVIDENCE_HANDOFF_MULTI_INSTANCE_NORMAL_TRUTH_R1"' \
+            "$CONFIG"
+
+          # ==========================================================
+          # AI SAFETY CONTRACT
+          # ==========================================================
+
+          grep -Fq \
+            'AI_ENGINEER_MODE = "DEV_CENTER_DIAGNOSTIC_ONLY"' \
+            "$CONFIG"
+
+          grep -Fq \
+            'CLOUD_IDENTITY_MODE = "SHADOW"' \
+            "$CONFIG"
+
+          grep -Fq \
+            'SELF_LEARNING_MODE = "ACTIVE_CONFIRMED_ONLY"' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_AI_IN_CRITICAL_SCAN_PATH = false' \
+            "$CONFIG"
+
+          # ==========================================================
+          # CORE PHYSICAL / IDENTITY FOUNDATIONS
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_PHYSICAL_OBJECT_STATE_MACHINE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_TWO_STAGE_CANDIDATE_RETRIEVAL = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_UNIFIED_RECOVERY_COORDINATOR = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_GUIDED_EVIDENCE_ACQUISITION = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_FINAL_SCAN_VIEWMODEL_SCOPE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_LOCKED_SCENE_CONTINUITY = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # V8.8.6 SAFETY FOUNDATIONS RETAINED
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_IDENTITY_QUANTITY_DECOUPLING = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_LOCKED_OBJECT_BEST_EVIDENCE_CARRY_FORWARD = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_IDENTITY_OWNER_FALLBACK = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_INDEPENDENT_NORMAL_COMPLETENESS = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_SHARED_FOREGROUND_MERGE_VETO = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_ELONGATED_AMBIGUOUS_LANE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_PERSISTENT_OBJECT_EVIDENCE_CACHE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_GROUND_TRUTH_ENFORCEMENT = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # V8.8.7 FOUNDATIONS RETAINED
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_PROJECT_TARGET_LOCK = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_CANONICAL_IDENTITY_CONTINUITY = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_TEMPORAL_TOP_K_EVIDENCE_FUSION = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_CANONICAL_IDENTITY_REBIND_TRANSFER = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_IDENTITY_AFTER_PHYSICAL_LOCK = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_NORMAL_LOCAL_COMPLETENESS_V2 = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_ROLE_DISCRIMINATIVE_LONG_IDENTITY = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_REGRESSION_GUARD = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # V8.8.8 AUTHORITATIVE CANONICAL EVIDENCE
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_AUTHORITATIVE_CANONICAL_EVIDENCE_ESCROW = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_EVIDENCE_SUPERIORITY_REBIND_RULE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_DUAL_FRAME_FINALIZATION = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_FINALIZATION_BARRIER = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_PHYSICAL_LOCK_IDENTITY_PERSISTENCE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_LIVE_FINAL_CANONICAL_HANDOFF = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # V8.8.8 MULTI-INSTANCE NORMAL TRUTH
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_MULTI_INSTANCE_NORMAL_TRUTH_V2 = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_NORMAL_MERGE_RISK_VETO = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_TEMPORAL_NORMAL_COMPLETENESS_V3 = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_TEMPORAL_PHYSICAL_INSTANCE_LEDGER = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_CANONICAL_SPLIT_RECOVERY = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # V8.8.8 LATENCY / OCR
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_OCR_INFORMATION_GAIN_CACHE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_FAST_VISUAL_IDENTITY_PATH = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_EVIDENCE_SCHEDULER = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_CONFIRMED_IDENTITY_COOLDOWN = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_LONG_MULTI_REGION_EVIDENCE = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # V8.8.8 REGRESSION / TARGET LOCK
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_GROUND_TRUTH_REGRESSION_GATE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_LATENCY_REGRESSION_GATE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_MEMORY_REGRESSION_GATE = true' \
+            "$CONFIG"
+
+          # ==========================================================
+          # IMPLEMENTATION CONTRACT
+          # ==========================================================
+
+          SRC="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate"
+
+          test -f \
+            "$SRC/CanonicalIdentityContinuity.kt"
+
+          test -f \
+            "$SRC/CanonicalNormalResolver.kt"
+
+          test -f \
+            "$SRC/NormalCompletenessPolicy.kt"
+
+          test -f \
+            "$SRC/NormalLocalCompleteness.kt"
+
+          test -f \
+            "$SRC/PersistentObjectEvidenceCache.kt"
+
+          # V8.8.8 new implementation classes
+
+          test -f \
+            "$SRC/CanonicalEvidenceEscrow.kt" || {
+              echo "::error::CanonicalEvidenceEscrow.kt tidak ditemukan."
+              exit 1
+            }
+
+          test -f \
+            "$SRC/FinalizationSnapshot.kt" || {
+              echo "::error::FinalizationSnapshot.kt tidak ditemukan."
+              exit 1
+            }
+
+          test -f \
+            "$SRC/NormalMergeRiskPolicy.kt" || {
+              echo "::error::NormalMergeRiskPolicy.kt tidak ditemukan."
+              exit 1
+            }
+
+          test -f \
+            "$SRC/TemporalPhysicalInstanceLedger.kt" || {
+              echo "::error::TemporalPhysicalInstanceLedger.kt tidak ditemukan."
+              exit 1
+            }
+
+          test -f \
+            "$SRC/OcrInformationGainCache.kt" || {
+              echo "::error::OcrInformationGainCache.kt tidak ditemukan."
+              exit 1
+            }
+
+          # ==========================================================
+          # CANONICAL EVIDENCE HANDOFF CONTRACT
+          # ==========================================================
+
+          grep -Fq \
+            'CanonicalEvidenceEscrow' \
+            "$SRC/LiveSmartScanCamera.kt"
+
+          grep -Fq \
+            'FinalizationSnapshot' \
+            "$SRC/LiveSmartScanCamera.kt"
+
+          grep -Fq \
+            'bestIdentityEvidence' \
+            "$SRC/CanonicalEvidenceEscrow.kt"
+
+          grep -Fq \
+            'freshPhysicalEvidence' \
+            "$SRC/FinalizationSnapshot.kt"
+
+          grep -Fq \
+            'evidenceSuperiority' \
+            "$SRC/CanonicalEvidenceEscrow.kt"
+
+          grep -Fq \
+            'canonicalIdentityId' \
+            "$SRC/CanonicalEvidenceEscrow.kt"
+
+          grep -Fq \
+            'bestEvidenceNotUsedAtFinal' \
+            "$SRC/LiveSmartScanCamera.kt"
+
+          # ==========================================================
+          # NORMAL PHYSICAL TRUTH CONTRACT
+          # ==========================================================
+
+          grep -Fq \
+            'NormalMergeRiskPolicy' \
+            "$SRC/CanonicalNormalResolver.kt"
+
+          grep -Fq \
+            'mergeRiskScore' \
+            "$SRC/NormalMergeRiskPolicy.kt"
+
+          grep -Fq \
+            'sharedForegroundMergeVeto' \
+            "$SRC/CanonicalNormalResolver.kt"
+
+          grep -Fq \
+            'canonicalSplit' \
+            "$SRC/CanonicalNormalResolver.kt"
+
+          grep -Fq \
+            'TemporalPhysicalInstanceLedger' \
+            "$SRC/CanonicalNormalResolver.kt"
+
+          # ==========================================================
+          # OCR / LATENCY CONTRACT
+          # ==========================================================
+
+          grep -Fq \
+            'OcrInformationGainCache' \
+            "$SRC/data/ProductionRepository.kt"
+
+          grep -Fq \
+            'LiveIdentityScheduler.choose' \
+            "$SRC/LiveSmartScanCamera.kt"
+
+          grep -Fq \
+            'CatalogCandidatePolicy.selectProductIds' \
+            "$SRC/data/ProductionRepository.kt"
+
+          grep -Fq \
+            'UnifiedDecisionKernel.decide' \
+            "$SRC/data/ProductionRepository.kt"
+
+          # ==========================================================
+          # DIAGNOSTIC CONTRACT
+          # ==========================================================
+
+          grep -Fq \
+            'FEATURE_VISUAL_DIAGNOSTIC_RECORDER = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'FEATURE_ONE_TAP_CHATGPT_EVIDENCE = true' \
+            "$CONFIG"
+
+          grep -Fq \
+            'CHATGPT + EVIDENCE ZIP' \
+            "$SRC/ArsDevCenter.kt"
+
+          grep -Fq \
+            'automatic_failure_bookmarks.jsonl' \
+            "$SRC/ArsVisualEvidenceRecorder.kt"
+
+          grep -Fq \
+            'android:foregroundServiceType="mediaProjection"' \
+            "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+
+          # ==========================================================
+          # AI MUST NOT ENTER CRITICAL SCAN PATH
+          # ==========================================================
+
+          if grep -Fq \
+            'AUTOMATIC_SCAN_FAILURE' \
+            "$SRC/PosViewModel.kt"; then
+
+            echo "::error::Automatic AI handoff masuk critical Smart Scan path."
             exit 1
-          fi
-          grep -Fq 'LiveEvidenceEscalationPolicy.HIGH_RES_REQUIRED' "$ROI_POLICY"
-          grep -Fq 'LiveEvidenceEscalationPolicy.VIEW_CHANGE_REQUIRED' "$ROI_POLICY"
-          grep -Fq 'LiveEvidenceEscalationPolicy.OCR' "$ROI_POLICY"
 
-          # V8.8.7 retains the V8.8.4 R3 pure host-JVM ROI geometry contract.
-          ADAPTIVE_ROI="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/AdaptiveIdentityRoi.kt"
-          ADAPTIVE_GEOMETRY="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/AdaptiveIdentityGeometry.kt"
+          fi
+
+          # ==========================================================
+          # OBSOLETE POLICY GUARD
+          # ==========================================================
+
+          if test -f \
+            "$SRC/TemporalIdentityHoldPolicy.kt"; then
+
+            echo "::error::Legacy TemporalIdentityHoldPolicy belum digabung ke PhysicalObjectStateMachine."
+            exit 1
+
+          fi
+
+          # ==========================================================
+          # ROI PURE GEOMETRY CONTRACT
+          # ==========================================================
+
+          ADAPTIVE_ROI="$SRC/AdaptiveIdentityRoi.kt"
+
+          ADAPTIVE_GEOMETRY="$SRC/AdaptiveIdentityGeometry.kt"
+
           ADAPTIVE_ROI_TEST="$PROJECT_DIR/app/src/test/java/com/arspos/anglerriausyndicate/AdaptiveIdentityRoiTest.kt"
 
           test -f "$ADAPTIVE_GEOMETRY" || {
@@ -167,40 +561,64 @@ jobs:
             exit 1
           }
 
-          if grep -Fq 'import android.graphics.Rect' "$ADAPTIVE_GEOMETRY"; then
+          if grep -Fq \
+            'import android.graphics.Rect' \
+            "$ADAPTIVE_GEOMETRY"; then
+
             echo "::error::Pure ROI geometry must not depend on android.graphics.Rect."
             exit 1
+
           fi
 
-          grep -Fq 'data class RoiBounds' "$ADAPTIVE_GEOMETRY"
-          grep -Fq 'object AdaptiveIdentityGeometry' "$ADAPTIVE_GEOMETRY"
-          grep -Fq 'AdaptiveIdentityGeometry' "$ADAPTIVE_ROI"
-          grep -Fq 'toRoiBounds' "$ADAPTIVE_ROI"
-          grep -Fq 'toAndroidRect' "$ADAPTIVE_ROI"
+          grep -Fq \
+            'data class RoiBounds' \
+            "$ADAPTIVE_GEOMETRY"
 
-          if grep -Fq 'import android.graphics.Rect' "$ADAPTIVE_ROI_TEST"; then
-            echo "::error::Host-JVM ROI regression test must not import android.graphics.Rect."
+          grep -Fq \
+            'object AdaptiveIdentityGeometry' \
+            "$ADAPTIVE_GEOMETRY"
+
+          grep -Fq \
+            'AdaptiveIdentityGeometry' \
+            "$ADAPTIVE_ROI"
+
+          grep -Fq \
+            'toRoiBounds' \
+            "$ADAPTIVE_ROI"
+
+          grep -Fq \
+            'toAndroidRect' \
+            "$ADAPTIVE_ROI"
+
+          if grep -Fq \
+            'import android.graphics.Rect' \
+            "$ADAPTIVE_ROI_TEST"; then
+
+            echo "::error::Host JVM ROI regression test must not import android.graphics.Rect."
             exit 1
+
           fi
 
-          grep -Fq 'AdaptiveIdentityGeometry.' "$ADAPTIVE_ROI_TEST"
+          grep -Fq \
+            'AdaptiveIdentityGeometry.' \
+            "$ADAPTIVE_ROI_TEST"
 
-          if grep -Fq 'AdaptiveIdentityRoi.' "$ADAPTIVE_ROI_TEST"; then
-            echo "::error::Host-JVM ROI regression test must execute pure geometry, not the Android adapter."
+          if grep -Fq \
+            'AdaptiveIdentityRoi.' \
+            "$ADAPTIVE_ROI_TEST"; then
+
+            echo "::error::Host JVM ROI regression test must execute pure geometry."
             exit 1
+
           fi
 
-          if grep -Fq 'AUTOMATIC_SCAN_FAILURE' "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"; then
-            echo "::error::Automatic AI handoff masih berada di critical Smart Scan path."
-            exit 1
-          fi
+          echo \
+            "Source V8.8.8 integrity + authoritative evidence handoff + multi-instance physical truth contracts: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
-          if test -f "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/TemporalIdentityHoldPolicy.kt"; then
-            echo "::error::Legacy TemporalIdentityHoldPolicy belum digabung ke PhysicalObjectStateMachine."
-            exit 1
-          fi
-
-          echo "Source V8.8.7 hash + canonical-identity/evidence-convergence safety invariants + compile/test contracts: PASS" >> "$GITHUB_STEP_SUMMARY"
+      # ============================================================
+      # 3. JDK
+      # ============================================================
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -208,23 +626,42 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # ============================================================
+      # 4. ANDROID SDK
+      # ============================================================
+
       - name: Resolve Android SDK manager
         shell: bash
         run: |
           set -euo pipefail
 
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
           test -n "$SDK_ROOT" && test -d "$SDK_ROOT" || {
             echo "::error::Android SDK root tidak tersedia pada runner."
             exit 1
           }
 
           SDKMANAGER_BIN="$(command -v sdkmanager || true)"
+
           if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+
+            SDKMANAGER_BIN="$(
+              find "$SDK_ROOT/cmdline-tools" \
+                -type f \
+                -name sdkmanager \
+                -perm -111 \
+                2>/dev/null \
+              | sort -V \
+              | tail -n 1 \
+              || true
+            )"
+
           fi
 
-          test -n "$SDKMANAGER_BIN" && test -x "$SDKMANAGER_BIN" || {
+          test -n "$SDKMANAGER_BIN" \
+            && test -x "$SDKMANAGER_BIN" || {
+
             echo "::error::sdkmanager tidak ditemukan."
             exit 1
           }
@@ -244,21 +681,40 @@ jobs:
         run: |
           set -euo pipefail
 
-          yes | "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" \
+          yes | "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            --licenses >/dev/null || true
+
+          "$SDKMANAGER_BIN" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          test -f "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
+          test -f \
+            "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
+
+          test -x \
+            "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt"
+
+          test -x \
+            "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
+
+          test -x \
+            "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
+
+      # ============================================================
+      # 5. GRADLE
+      # ============================================================
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
+
+      # ============================================================
+      # 6. VERIFY OFFICIAL SIGNER
+      # ============================================================
 
       - name: Verify official ARS signer
         shell: bash
@@ -277,21 +733,32 @@ jobs:
           : "${ARS_RELEASE_KEY_PASSWORD:?Missing ARS_RELEASE_KEY_PASSWORD}"
           : "${ARS_RELEASE_CERT_SHA256:?Missing ARS_RELEASE_CERT_SHA256}"
 
-          EXPECTED="$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          EXPECTED="$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
+          )"
+
           test "$EXPECTED" = "$OFFICIAL_CERT_SHA256" || {
             echo "::error::Secret certificate bukan signer resmi ARS POS."
             exit 1
           }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v887-209.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v888-210.jks"
+
           umask 077
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$KEYSTORE"
+
           test -s "$KEYSTORE"
 
           keytool -list \
             -keystore "$KEYSTORE" \
             -storepass:env ARS_RELEASE_STORE_PASSWORD \
-            -alias "$ARS_RELEASE_KEY_ALIAS" >/dev/null
+            -alias "$ARS_RELEASE_KEY_ALIAS" \
+            >/dev/null
 
           ACTUAL=$(
             keytool -exportcert -rfc \
@@ -308,8 +775,17 @@ jobs:
             exit 1
           }
 
-          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
-          echo "Official signer pre-build verification: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo \
+            "ARS_RELEASE_STORE_FILE=$KEYSTORE" \
+            >> "$GITHUB_ENV"
+
+          echo \
+            "Official signer pre-build verification: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # ============================================================
+      # 7. COMPILE
+      # ============================================================
 
       - name: Compile Android debug and release Kotlin
         shell: bash
@@ -319,14 +795,20 @@ jobs:
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
+
           gradle \
             :app:compileDebugKotlin \
             :app:compileReleaseKotlin \
             --no-daemon \
             --stacktrace
 
-      - name: Run regression tests and build signed release APK
+      # ============================================================
+      # 8. TEST + RELEASE
+      # ============================================================
+
+      - name: Run V8.8.8 regression tests and build signed release APK
         shell: bash
         env:
           ARS_RELEASE_STORE_PASSWORD: ${{ secrets.ARS_RELEASE_STORE_PASSWORD }}
@@ -334,7 +816,9 @@ jobs:
           ARS_RELEASE_KEY_PASSWORD: ${{ secrets.ARS_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
+
           gradle \
             :physicaltruth-jvm:test \
             :app:testDebugUnitTest \
@@ -342,61 +826,204 @@ jobs:
             --no-daemon \
             --stacktrace
 
+      # ============================================================
+      # 9. VERIFY FINAL APK
+      # ============================================================
+
       - name: Verify package version signer and alignment
         shell: bash
         env:
           ARS_RELEASE_CERT_SHA256: ${{ secrets.ARS_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
 
           APK="app/build/outputs/apk/release/app-release.apk"
+
           test -s "$APK"
 
           SDK_BIN="$ANDROID_SDK_ROOT/build-tools/35.0.0"
-          "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
-          grep -Fq "name='$EXPECTED_PACKAGE'" apk-badging.txt
-          grep -Fq "versionCode='$EXPECTED_VERSION_CODE'" apk-badging.txt
-          grep -Fq "versionName='$EXPECTED_VERSION_NAME'" apk-badging.txt
-          test "$EXPECTED_VERSION_CODE" -gt "$PREVIOUS_VERSION_CODE"
 
-          "$SDK_BIN/apksigner" verify --verbose --print-certs "$APK" > signer-info.txt
-          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          "$SDK_BIN/aapt" \
+            dump badging "$APK" \
+            > apk-badging.txt
 
-          ACTUAL="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' signer-info.txt | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
-          EXPECTED="$(printf '%s' "$ARS_RELEASE_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          grep -Fq \
+            "name='$EXPECTED_PACKAGE'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionCode='$EXPECTED_VERSION_CODE'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionName='$EXPECTED_VERSION_NAME'" \
+            apk-badging.txt
+
+          test \
+            "$EXPECTED_VERSION_CODE" \
+            -gt \
+            "$PREVIOUS_VERSION_CODE"
+
+          "$SDK_BIN/apksigner" \
+            verify \
+            --verbose \
+            --print-certs \
+            "$APK" \
+            > signer-info.txt
+
+          "$SDK_BIN/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
+
+          ACTUAL="$(
+            awk -F': ' \
+              '/Signer #1 certificate SHA-256 digest:/ {
+                print $2
+                exit
+              }' \
+              signer-info.txt \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
+          )"
+
+          EXPECTED="$(
+            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
+          )"
+
           test -n "$ACTUAL"
+
           test "$ACTUAL" = "$EXPECTED"
+
           test "$ACTUAL" = "$OFFICIAL_CERT_SHA256"
 
-          mkdir -p "$GITHUB_WORKSPACE/release-output"
-          OUT_APK="$GITHUB_WORKSPACE/release-output/ARS-POS-1.10.9-V8.8.7-CANONICAL-IDENTITY-CONTINUITY-209-20260928-SIGNED.apk"
-          cp "$APK" "$OUT_APK"
-          cp signer-info.txt "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
-          cp apk-badging.txt "$GITHUB_WORKSPACE/release-output/APK_METADATA.txt"
-          cp "$RUNNER_TEMP/ars-source-checks.txt" "$GITHUB_WORKSPACE/release-output/SOURCE_CHECKS.txt"
-          cp "$RUNNER_TEMP/ars-sdk-info.txt" "$GITHUB_WORKSPACE/release-output/SDK_INFO.txt"
-          cp validation/validation-status.json "$GITHUB_WORKSPACE/release-output/SOURCE_VALIDATION_STATUS.json"
-          sha256sum "$OUT_APK" > "$GITHUB_WORKSPACE/release-output/APK_SHA256.txt"
+          # ----------------------------------------------------------
+          # RELEASE OUTPUT
+          # ----------------------------------------------------------
 
-          echo "Build 1.10.9 (209) / Phase 4.3.5.7 / V8.8.7: PASS." >> "$GITHUB_STEP_SUMMARY"
-          echo "Canonical identity continuity and temporal Top-K evidence fusion are active; high-resolution LONG identity and bounded role-discriminative evidence are enabled; NORMAL local completeness V2 and Project Target/Regression Guard are present; AI Engineer remains outside the critical scan path." >> "$GITHUB_STEP_SUMMARY"
-          echo "Cloud Identity=SHADOW; Self Learning=ACTIVE_CONFIRMED_ONLY; all 14 thresholds unchanged." >> "$GITHUB_STEP_SUMMARY"
-          echo "Install in-place only; do not uninstall the production app." >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p \
+            "$GITHUB_WORKSPACE/release-output"
+
+          OUT_APK="$GITHUB_WORKSPACE/release-output/ARS-POS-1.11.0-V8.8.8-AUTHORITATIVE-CANONICAL-EVIDENCE-210-20260929-SIGNED.apk"
+
+          cp \
+            "$APK" \
+            "$OUT_APK"
+
+          cp \
+            signer-info.txt \
+            "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
+
+          cp \
+            apk-badging.txt \
+            "$GITHUB_WORKSPACE/release-output/APK_METADATA.txt"
+
+          cp \
+            "$RUNNER_TEMP/ars-source-checks.txt" \
+            "$GITHUB_WORKSPACE/release-output/SOURCE_CHECKS.txt"
+
+          cp \
+            "$RUNNER_TEMP/ars-sdk-info.txt" \
+            "$GITHUB_WORKSPACE/release-output/SDK_INFO.txt"
+
+          cp \
+            validation/validation-status.json \
+            "$GITHUB_WORKSPACE/release-output/SOURCE_VALIDATION_STATUS.json"
+
+          sha256sum \
+            "$SOURCE_ZIP" \
+            > "$GITHUB_WORKSPACE/release-output/SOURCE_ZIP_SHA256.txt"
+
+          sha256sum \
+            "$OUT_APK" \
+            > "$GITHUB_WORKSPACE/release-output/APK_SHA256.txt"
+
+          # ----------------------------------------------------------
+          # BUILD SUMMARY
+          # ----------------------------------------------------------
+
+          echo \
+            "Build 1.11.0 (210) / Phase 4.3.5.8 / V8.8.8: PASS." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Authoritative Canonical Evidence Handoff: ENABLED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Dual-frame finalization: BEST IDENTITY FRAME + FRESH PHYSICAL FRAME." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Finalization Barrier: ENABLED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Physical-lock identity persistence: ENABLED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Multi-Instance NORMAL Truth V2 + Merge Risk Veto + Canonical Split Recovery: ENABLED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Temporal NORMAL Completeness V3 + Temporal Physical Instance Ledger: ENABLED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Fast Visual Identity + OCR Information Gain Cache + Evidence Scheduler: ENABLED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Recognition thresholds: UNCHANGED." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Cloud Identity=SHADOW." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Self Learning=ACTIVE_CONFIRMED_ONLY." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "ARS AI Engineer=DEV_CENTER_DIAGNOSTIC_ONLY." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "Update path: 1.10.9 (209) -> 1.11.0 (210) IN-PLACE ONLY." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          echo \
+            "DO NOT UNINSTALL production ARS POS." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # ============================================================
+      # 10. UPLOAD OFFICIAL APK
+      # ============================================================
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.7-CANONICAL-IDENTITY-CONTINUITY-209-OFFICIAL
+          name: ARS-POS-V8.8.8-AUTHORITATIVE-CANONICAL-EVIDENCE-210-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload test reports
+      # ============================================================
+      # 11. UPLOAD REGRESSION REPORTS
+      # ============================================================
+
+      - name: Upload V8.8.8 regression reports
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.8.7-209-TEST-REPORTS
+          name: ARS-POS-V8.8.8-210-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -406,15 +1033,23 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # ============================================================
+      # 12. REMOVE SIGNING KEY
+      # ============================================================
+
       - name: Remove runner copy of signing key
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v887-209.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v888-210.jks"
+
           if [ -f "$KEYSTORE" ]; then
+
             if command -v shred >/dev/null 2>&1; then
-              shred -u "$KEYSTORE" || rm -f -- "$KEYSTORE"
+              shred -u "$KEYSTORE" \
+                || rm -f -- "$KEYSTORE"
             else
               rm -f -- "$KEYSTORE"
             fi
+
           fi
