@@ -1,18 +1,25 @@
-name: ARS POS V8.9.0-E Physical Instance Authority APVD Deterministic Latency R1 216
+name: ARS POS V8.9.0-F Physical Authority Ledger APVD Query Canvas CI R1 217
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ARS_POS_V8_9_0_E_R1_216_SOURCE.zip
-      - .github/workflows/build-apk.yml
+      - '*.zip'
+      - 'settings.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradle.properties'
+      - 'app/**'
+      - 'physicaltruth-jvm/**'
+      - 'tools/**'
+      - 'ars-ai-gateway/**'
+      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: ars-pos-v890e-physical-authority-apvd-latency-216-${{ github.ref }}
+  group: ars-pos-v890f-physical-authority-ledger-217-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -21,12 +28,11 @@ jobs:
     timeout-minutes: 45
 
     env:
-      SOURCE_ZIP: ARS_POS_V8_9_0_E_R1_216_SOURCE.zip
-      SOURCE_SHA256: fcc4ab271dc08b17ca3dcc1bdb39c6f849479286960a56db6e9d008cd846f119
+      EXPECTED_SOURCE_SHA256: 8b56b1bb22df346e5aa5bfc72ae5e8361d21148a99bbfc75b5186bb31d11dbcc
       EXPECTED_PACKAGE: com.arspos.anglerriausyndicate
-      EXPECTED_VERSION_CODE: '216'
-      EXPECTED_VERSION_NAME: '1.12.4'
-      PREVIOUS_VERSION_CODE: '215'
+      EXPECTED_VERSION_CODE: '217'
+      EXPECTED_VERSION_NAME: '1.12.5'
+      PREVIOUS_VERSION_CODE: '216'
       OFFICIAL_CERT_SHA256: AA2A8C6C885BA887577A2C2813AEA2F72E5FB51892FC486108B57F8389D56AEB
 
     steps:
@@ -35,23 +41,145 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify V8.9.0-E source package and invariants
+      - name: Resolve source tree or verified archive fallback
         shell: bash
         run: |
           set -euo pipefail
 
-          test -f "$SOURCE_ZIP" || {
-            echo "::error::Source ZIP tidak ditemukan: $SOURCE_ZIP"
-            echo "::error::Upload ZIP ke root repository lalu jalankan workflow pada commit terbaru."
-            exit 1
+          use_project_dir() {
+            local dir="$1"
+            test -f "$dir/settings.gradle.kts"
+            test -f "$dir/app/build.gradle.kts"
+            echo "PROJECT_DIR=$dir" >> "$GITHUB_ENV"
           }
 
-          printf '%s  %s\n' "$SOURCE_SHA256" "$SOURCE_ZIP" | sha256sum -c -
-          unzip -t "$SOURCE_ZIP" >/dev/null
+          # Preferred production CI: ordinary checked-out Gradle source tree.
+          if [ -f "$GITHUB_WORKSPACE/settings.gradle.kts" ] && \
+             [ -f "$GITHUB_WORKSPACE/app/build.gradle.kts" ]; then
+            use_project_dir "$GITHUB_WORKSPACE"
+            echo "SOURCE_MODE=REPOSITORY_TREE" >> "$GITHUB_ENV"
+            echo "Source mode: repository tree" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
-          PROJECT_DIR="$(mktemp -d "$RUNNER_TEMP/ars-v890e-216.XXXXXX")"
-          unzip -q "$SOURCE_ZIP" -d "$PROJECT_DIR"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          # Mobile-friendly fallback 1:
+          # filename tidak penting; SHA-256 yang menjadi authority.
+          FOUND_SOURCE=""
+          while IFS= read -r -d '' candidate; do
+            actual="$(sha256sum "$candidate" | awk '{print $1}')"
+            if [ "$actual" = "$EXPECTED_SOURCE_SHA256" ]; then
+              FOUND_SOURCE="$candidate"
+              break
+            fi
+          done < <(
+            find "$GITHUB_WORKSPACE" \
+              -maxdepth 1 \
+              -type f \
+              -iname '*.zip' \
+              -print0
+          )
+
+          if [ -n "$FOUND_SOURCE" ]; then
+            PROJECT_DIR="$(
+              mktemp -d \
+                "$RUNNER_TEMP/ars-v890f-source.XXXXXX"
+            )"
+
+            unzip -q \
+              "$FOUND_SOURCE" \
+              -d "$PROJECT_DIR"
+
+            use_project_dir "$PROJECT_DIR"
+
+            echo \
+              "SOURCE_MODE=VERIFIED_SOURCE_ZIP" \
+              >> "$GITHUB_ENV"
+
+            echo \
+              "Resolved verified source ZIP: $(basename "$FOUND_SOURCE")" \
+              >> "$GITHUB_STEP_SUMMARY"
+
+            exit 0
+          fi
+
+          # Mobile-friendly fallback 2:
+          # release pack juga dapat menjadi input.
+          while IFS= read -r -d '' pack; do
+            PACK_DIR="$(
+              mktemp -d \
+                "$RUNNER_TEMP/ars-v890f-pack.XXXXXX"
+            )"
+
+            if unzip -q \
+              "$pack" \
+              -d "$PACK_DIR" \
+              2>/dev/null; then
+
+              while IFS= read -r -d '' nested; do
+                actual="$(
+                  sha256sum "$nested" \
+                  | awk '{print $1}'
+                )"
+
+                if [ "$actual" = "$EXPECTED_SOURCE_SHA256" ]; then
+                  PROJECT_DIR="$(
+                    mktemp -d \
+                      "$RUNNER_TEMP/ars-v890f-nested.XXXXXX"
+                  )"
+
+                  unzip -q \
+                    "$nested" \
+                    -d "$PROJECT_DIR"
+
+                  use_project_dir "$PROJECT_DIR"
+
+                  echo \
+                    "SOURCE_MODE=VERIFIED_RELEASE_PACK" \
+                    >> "$GITHUB_ENV"
+
+                  echo \
+                    "Resolved source from release pack: $(basename "$pack")" \
+                    >> "$GITHUB_STEP_SUMMARY"
+
+                  exit 0
+                fi
+              done < <(
+                find "$PACK_DIR" \
+                  -type f \
+                  -iname '*.zip' \
+                  -print0
+              )
+            fi
+          done < <(
+            find "$GITHUB_WORKSPACE" \
+              -maxdepth 1 \
+              -type f \
+              -iname '*.zip' \
+              -print0
+          )
+
+          echo "::error::ARS POS source tidak ditemukan."
+          echo "::error::Workflow menerima salah satu dari:"
+          echo "::error::(1) source tree Gradle di repository root,"
+          echo "::error::(2) V8.9.0-F source ZIP resmi dengan SHA-256 benar,"
+          echo "::error::(3) release pack yang berisi source ZIP resmi."
+
+          echo "::error::File ZIP yang saat ini ada di root:"
+
+          find "$GITHUB_WORKSPACE" \
+            -maxdepth 1 \
+            -type f \
+            -iname '*.zip' \
+            -printf '  %f\n' \
+            || true
+
+          exit 1
+
+      - name: Verify V8.9.0-F source invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
 
           for f in \
             settings.gradle.kts \
@@ -59,205 +187,102 @@ jobs:
             app/build.gradle.kts \
             tools/validate_source.py \
             SOURCE_FILES_SHA256.txt \
-            PHASE4_3_6_2_V8_9_0_E_PHYSICAL_INSTANCE_AUTHORITY_APVD_DETERMINISTIC_LATENCY_DISCRIMINATIVE_EVIDENCE_CONVERGENCE_R1.md \
-            RELEASE_216.md \
-            BUILD_V890E.md \
-            ARS_POS_V8_9_0_E_RELEASE_MANIFEST_216.txt \
-            V8_9_0_E_VALIDATION_STATUS.txt \
-            app/src/main/java/com/arspos/anglerriausyndicate/SmartCaptureEvidence.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/PhysicalInstanceGraph.kt \
+            PHASE4_3_6_3_V8_9_0_F_PHYSICAL_AUTHORITY_LEDGER_APVD_QUERY_CANVAS_REPRODUCIBLE_CI_R1.md \
+            RELEASE_217.md \
+            BUILD_V890F.md \
+            ARS_POS_V8_9_0_F_RELEASE_MANIFEST_217.txt \
+            V8_9_0_F_VALIDATION_STATUS.txt \
             app/src/main/java/com/arspos/anglerriausyndicate/PhysicalIdentityAuthority.kt \
+            app/src/main/java/com/arspos/anglerriausyndicate/PhysicalIdentityFragmentPolicy.kt \
+            app/src/main/java/com/arspos/anglerriausyndicate/PhysicalIdentityJobLedger.kt \
             app/src/main/java/com/arspos/anglerriausyndicate/LongAuthenticityInstanceMask.kt \
             app/src/main/java/com/arspos/anglerriausyndicate/CandidateSpecificOcrRoi.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/AuthoritativeInstanceMask.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/PartialLongIdentityPolicy.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/HighResAmbiguityPolicy.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/OcrInformationGainPolicy.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/ObjectEvidencePlanner.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/visualdna/PrivateVisualDnaRuntime.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/visualdna/SmartCatalogRebuilder.kt \
-            app/src/main/java/com/arspos/anglerriausyndicate/visualdna/VisualDnaContract.kt; do
-            test -f "$PROJECT_DIR/$f" || {
+            app/src/main/java/com/arspos/anglerriausyndicate/visualdna/PrivateVisualDnaRuntime.kt
+          do
+            test -f "$f" || {
               echo "::error::File release wajib tidak ditemukan: $f"
               exit 1
             }
           done
 
-          (
-            cd "$PROJECT_DIR"
-            sha256sum -c SOURCE_FILES_SHA256.txt > "$RUNNER_TEMP/ars-source-checks.txt"
-          )
+          sha256sum \
+            -c SOURCE_FILES_SHA256.txt \
+            > "$RUNNER_TEMP/ars-source-checks.txt"
 
-          python3 "$PROJECT_DIR/tools/validate_source.py" --root "$PROJECT_DIR"
+          python3 \
+            tools/validate_source.py \
+            --root . \
+            | tee validation/ci-static-validation.json
 
-          python3 -m unittest discover \
-            -s "$PROJECT_DIR/tools" \
+          python3 \
+            -m unittest discover \
+            -s tools \
             -p 'test_*.py'
 
           (
-            cd "$PROJECT_DIR/ars-ai-gateway"
+            cd ars-ai-gateway
+
             node --check server.mjs
             node --check security.mjs
             node --check runtime-bundled.mjs
             node --test
           )
 
-          APP_GRADLE="$PROJECT_DIR/app/build.gradle.kts"
-          CONFIG="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt"
-          DB="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/db/ArsDatabase.kt"
-          CAMERA="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LiveSmartScanCamera.kt"
-          VM="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"
-          REPO="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt"
-          DNA="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/visualdna/PrivateVisualDnaRuntime.kt"
-          REBUILDER="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/visualdna/SmartCatalogRebuilder.kt"
-          DEV_CENTER="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/ArsDevCenter.kt"
-          PHYSICAL_AUTHORITY="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PhysicalIdentityAuthority.kt"
-          LONG_MASK="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/LongAuthenticityInstanceMask.kt"
-          ROD_AUTH="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/RodAuthenticityEvaluator.kt"
-          CANDIDATE_OCR="$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/CandidateSpecificOcrRoi.kt"
+          grep -Fq \
+            'applicationId = "com.arspos.anglerriausyndicate"' \
+            app/build.gradle.kts
 
-          grep -Fq 'applicationId = "com.arspos.anglerriausyndicate"' "$APP_GRADLE"
-          grep -Fq 'versionCode = 216' "$APP_GRADLE"
-          grep -Fq 'versionName = "1.12.4"' "$APP_GRADLE"
+          grep -Fq \
+            'versionCode = 217' \
+            app/build.gradle.kts
 
-          grep -Fq 'const val PHASE = "4.3.6.2"' "$CONFIG"
-          grep -Fq 'const val ENGINE = "V8.9.0-E"' "$CONFIG"
-          grep -Fq 'const val RELEASE_REVISION = "PHYSICAL_INSTANCE_AUTHORITY_APVD_DETERMINISTIC_LATENCY_DISCRIMINATIVE_EVIDENCE_CONVERGENCE_R1"' "$CONFIG"
+          grep -Fq \
+            'versionName = "1.12.5"' \
+            app/build.gradle.kts
 
-          grep -Fq 'FEATURE_SMART_CAPTURE_TRANSACTION_PATH = true' "$CONFIG"
-          grep -Fq 'FEATURE_CONTINUOUS_LIVE_IDENTITY_CRITICAL_PATH = false' "$CONFIG"
-          grep -Fq 'FEATURE_FROZEN_CAPTURE_EVIDENCE = true' "$CONFIG"
-          grep -Fq 'FEATURE_PER_OBJECT_BEST_FRAME = true' "$CONFIG"
-          grep -Fq 'FEATURE_SAFE_NON_GENERATIVE_ENHANCEMENT = true' "$CONFIG"
-          grep -Fq 'FEATURE_RAW_ENHANCED_CONSENSUS = true' "$CONFIG"
-          grep -Fq 'FEATURE_BACKGROUND_SUPPRESSION = true' "$CONFIG"
-          grep -Fq 'FEATURE_ORIENTATION_INVARIANT_DNA = true' "$CONFIG"
-          grep -Fq 'FEATURE_OPEN_SET_KNOWN_AMBIGUOUS_UNKNOWN = true' "$CONFIG"
-          grep -Fq 'FEATURE_BOUNDED_OBJECT_DECISION = true' "$CONFIG"
-          grep -Fq 'FEATURE_ACCEPTED_OBJECT_IMMUTABILITY = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_RUNTIME_INDEX = true' "$CONFIG"
-          grep -Fq 'FEATURE_VISUAL_DNA_EXTRACTION_ENGINE = true' "$CONFIG"
-          grep -Fq 'FEATURE_VISUAL_DNA_SCANNER_ROUTING = true' "$CONFIG"
-          grep -Fq 'MAX_TRANSACTION_EVIDENCE_PASSES = 3' "$CONFIG"
-          grep -Fq 'MAX_PARALLEL_IDENTITY_TRACKS = 4' "$CONFIG"
-          grep -Fq 'FEATURE_AI_IN_CRITICAL_SCAN_PATH = false' "$CONFIG"
+          grep -Fq \
+            'const val PHASE = "4.3.6.3"' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt
 
-          # V8.9.0-E blocker gates.
-          grep -Fq 'FEATURE_PHYSICAL_INSTANCE_IDENTITY_AUTHORITY = true' "$CONFIG"
-          grep -Fq 'FEATURE_CROSS_LANE_IDENTITY_JOB_SUPPRESSION = true' "$CONFIG"
-          grep -Fq 'FEATURE_LONG_INSTANCE_MASK_AUTHENTICITY = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_GLOBAL_PREFILTER = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_LOCAL_DESCRIPTOR_CACHE = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_HARD_LATENCY_BUDGET = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_STAGE_TELEMETRY = true' "$CONFIG"
-          grep -Fq 'FEATURE_CANDIDATE_SPECIFIC_OCR_ROI = true' "$CONFIG"
-          grep -Fq 'FEATURE_GROUND_TRUTH_REGRESSION_REQUIRED = true' "$CONFIG"
-          grep -Fq 'APVD_SINGLE_QUERY_BUDGET_MS = 650L' "$CONFIG"
-          grep -Fq 'APVD_OBJECT_BUDGET_MS = 1_400L' "$CONFIG"
-          grep -Fq 'MAX_APVD_HIGH_RES_PASSES = 1' "$CONFIG"
+          grep -Fq \
+            'const val ENGINE = "V8.9.0-F"' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt
 
-          grep -Fq 'identityJobEligible = eligible' "$PHYSICAL_AUTHORITY"
-          grep -Fq 'duplicateIdentityJobsSuppressed' "$PHYSICAL_AUTHORITY"
-          grep -Fq 'PhysicalIdentityAuthority.resolve' "$REPO"
-          grep -Fq 'physicalIdentityAuthorities' "$REPO"
+          grep -Fq \
+            'FEATURE_PHYSICAL_IDENTITY_JOB_LEDGER = true' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt
 
-          grep -Fq 'LocalDescriptorContext' "$DNA"
-          grep -Fq 'prefilterIds' "$DNA"
-          grep -Fq 'budgetExceeded' "$DNA"
-          grep -Fq 'apvdTimeoutStage' "$REPO"
+          grep -Fq \
+            'FEATURE_APVD_BOUNDED_QUERY_CANVAS = true' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt
 
-          grep -Fq 'LongAuthenticityInstanceMask.build' "$ROD_AUTH"
-          grep -Fq 'allowedByInstance' "$ROD_AUTH"
+          grep -Fq \
+            'APVD_NORMAL_MAX_EDGE_PX = 720' \
+            app/src/main/java/com/arspos/anglerriausyndicate/ArsV850Config.kt
 
-          grep -Fq 'CandidateSpecificOcrRoi.plan' "$REPO"
-          grep -Fq 'TOPK_' "$CANDIDATE_OCR"
+          grep -Fq \
+            'IDENTITY_JOB_DUPLICATE_SUPPRESSED' \
+            app/src/main/java/com/arspos/anglerriausyndicate/data/ProductionRepository.kt
 
-          grep -Eq 'version\s*=\s*6' "$DB"
-          grep -Fq 'MIGRATION_5_6' "$DB"
-          if grep -Fq 'fallbackToDestructiveMigration' "$DB"; then
-            echo "::error::Destructive Room migration dilarang."
-            exit 1
-          fi
+          grep -Fq \
+            'COLLINEAR_EVIDENCE_FRAGMENT' \
+            app/src/main/java/com/arspos/anglerriausyndicate/PhysicalIdentityFragmentPolicy.kt
 
-          grep -Fq 'SmartCaptureEvidenceFactory.fromFinalLock' "$VM"
-          grep -Fq 'SMART_CAPTURE_FROZEN' "$VM"
-          grep -Fq 'PrivateVisualDnaRuntime.query' "$REPO"
-          grep -Fq 'scanBarcodeFast' "$REPO"
-          grep -Fq 'SCAN_PARALLEL_RECOGNITION' "$REPO"
-          grep -Fq 'SCAN_APVD_QUERY' "$REPO"
-          grep -Fq 'VisualDnaQueryResult.EVIDENCE_CONFLICT' "$DNA"
-          grep -Fq 'repeat(3)' "$DNA"
+          grep -Fq \
+            'val histogram = IntArray(256)' \
+            app/src/main/java/com/arspos/anglerriausyndicate/visualdna/PrivateVisualDnaRuntime.kt
 
-          grep -Fq 'REBUILD SMART CATALOG' "$DEV_CENTER"
-          grep -Fq 'SmartCatalogRebuilder' "$REBUILDER"
-          grep -Fq 'COLLISION_HIGH' "$REBUILDER"
-          grep -Fq 'val status = VisualDnaContract.DNA_STATUS_RECOGNITION_READY' "$REBUILDER"
-          grep -Fq 'collisionGuarded' "$REBUILDER"
-          grep -Fq 'axialLocalFeatures' "$REBUILDER"
-          grep -Fq 'AXIAL_' "$REBUILDER"
+          echo \
+            "Source mode: ${SOURCE_MODE:-UNKNOWN}" \
+            >> "$GITHUB_STEP_SUMMARY"
 
-          grep -Fq 'FEATURE_APVD_AUTO_CATALOG_ACTIVATION = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_CONFIRMED_TEACH_COMPILE = true' "$CONFIG"
-          grep -Fq 'FEATURE_REGION_CONSISTENT_LOCAL_DNA = true' "$CONFIG"
-          grep -Fq 'FEATURE_OCR_INDEPENDENT_CANDIDATE_UNION = true' "$CONFIG"
-          grep -Fq 'FEATURE_PHYSICAL_INSTANCE_GRAPH = true' "$CONFIG"
-          grep -Fq 'FEATURE_EVIDENCE_ATTACHMENT = true' "$CONFIG"
-          grep -Fq 'FEATURE_AXIAL_VISUAL_DNA_R1 = true' "$CONFIG"
-          grep -Fq 'FEATURE_STALE_IDENTITY_FRAME_VETO = true' "$CONFIG"
-          grep -Fq 'FEATURE_AUTHORITATIVE_INSTANCE_MASK = true' "$CONFIG"
-          grep -Fq 'FEATURE_TRUE_SMART_CAPTURE_MICROBURST = true' "$CONFIG"
-          grep -Fq 'FEATURE_CROSS_LANE_PHYSICAL_EVIDENCE_FUSION = true' "$CONFIG"
-          grep -Fq 'FEATURE_PARTIAL_LONG_IDENTITY_LANE = true' "$CONFIG"
-          grep -Fq 'FEATURE_HIGH_RES_AMBIGUITY_RESOLUTION = true' "$CONFIG"
-          grep -Fq 'FEATURE_APVD_MULTI_FRAME_FUSION = true' "$CONFIG"
-          grep -Fq 'FEATURE_OCR_INFORMATION_GAIN_GATE = true' "$CONFIG"
-          grep -Fq 'FEATURE_BACKGROUND_INSTANCE_REJECTION = true' "$CONFIG"
-          grep -Fq 'MIN_CAPTURE_BURST_FRAMES = 2' "$CONFIG"
-          grep -Fq 'MAX_CAPTURE_BURST_FRAMES = 3' "$CONFIG"
-          grep -Fq 'DATABASE_VERSION = 6' "$CONFIG"
+          echo \
+            "V8.9.0-F source invariants: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
-          grep -Fq 'ensureSmartCatalogReady' "$REPO"
-          grep -Fq 'ocrRecallIds' "$REPO"
-          grep -Fq 'barcodeRecallIds' "$REPO"
-          grep -Fq 'PHYSICAL_INSTANCE_GRAPH' "$REPO"
-          grep -Fq 'MAX_FINAL_IDENTITY_FRAME_AGE_MS' \
-            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/SmartCaptureEvidence.kt"
-          grep -Fq 'quantityEligible = false' \
-            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PhysicalInstanceGraph.kt"
-
-          grep -Fq 'microBurstFrameCount' "$CAMERA"
-          grep -Fq 'True Smart Capture micro-burst contract not satisfied' "$VM"
-
-          grep -Fq 'AuthoritativeInstanceMask.evaluate' \
-            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/CanonicalNormalResolver.kt"
-
-          grep -Fq 'PARTIAL_LONG_IDENTITY_EVIDENCE_ONLY' \
-            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/SmartVisualScanner.kt"
-
-          grep -Fq 'CROSS_LANE_PARTIAL_LONG_IDENTITY_EVIDENCE' \
-            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PhysicalInstanceGraph.kt"
-
-          grep -Fq 'APVD_AMBIGUITY_HIGH_RES_ESCALATION' "$REPO"
-          grep -Fq 'OcrInformationGainPolicy.decide' "$REPO"
-          grep -Fq 'fuseIndependent' "$DNA"
-          grep -Fq 'collisionPairsEvaluated' "$REBUILDER"
-          grep -Fq 'collisionEdgesAccepted' "$REBUILDER"
-
-          if grep -Fq 'AUTOMATIC_SCAN_FAILURE' \
-            "$PROJECT_DIR/app/src/main/java/com/arspos/anglerriausyndicate/PosViewModel.kt"; then
-            echo "::error::AI handoff tidak boleh masuk critical Smart Scan path."
-            exit 1
-          fi
-
-          if grep -Fq 'FEATURE_CONTINUOUS_LIVE_IDENTITY_CRITICAL_PATH = true' "$CONFIG"; then
-            echo "::error::Continuous live identity tidak boleh kembali menjadi critical path."
-            exit 1
-          fi
-
-          echo "V8.9.0-E source/invariants: PASS" >> "$GITHUB_STEP_SUMMARY"
-          echo "Physical-instance identity authority + bounded APVD + mask-aware LONG authenticity: ACTIVE" >> "$GITHUB_STEP_SUMMARY"
-          echo "Continuous live identity critical path: DISABLED" >> "$GITHUB_STEP_SUMMARY"
-          echo "Recognition thresholds: UNCHANGED" >> "$GITHUB_STEP_SUMMARY"
+          echo \
+            "Recognition thresholds: UNCHANGED" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -265,54 +290,53 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Resolve Android SDK manager
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
-          test -n "$SDK_ROOT" && test -d "$SDK_ROOT" || {
-            echo "::error::Android SDK root tidak tersedia pada runner."
-            exit 1
-          }
-
-          SDKMANAGER_BIN="$(command -v sdkmanager || true)"
-          if [ -z "$SDKMANAGER_BIN" ]; then
-            SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" \
-              -type f -name sdkmanager -perm -111 2>/dev/null \
-              | sort -V | tail -n 1 || true)"
-          fi
-
-          test -n "$SDKMANAGER_BIN" && test -x "$SDKMANAGER_BIN" || {
-            echo "::error::sdkmanager tidak ditemukan."
-            exit 1
-          }
-
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "SDKMANAGER_BIN=$SDKMANAGER_BIN" >> "$GITHUB_ENV"
-
-          {
-            echo "ANDROID_HOME=$SDK_ROOT"
-            echo "sdkmanager=$SDKMANAGER_BIN"
-            "$SDKMANAGER_BIN" --version
-          } > "$RUNNER_TEMP/ars-sdk-info.txt"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
 
       - name: Install Android SDK 35 build tools
         shell: bash
         run: |
           set -euo pipefail
 
-          yes | "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
-          "$SDKMANAGER_BIN" --sdk_root="$ANDROID_SDK_ROOT" \
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
+          test -n "$SDK_ROOT" && \
+          test -d "$SDK_ROOT" || {
+            echo "::error::Android SDK root tidak tersedia setelah setup-android."
+            exit 1
+          }
+
+          echo \
+            "ANDROID_HOME=$SDK_ROOT" \
+            >> "$GITHUB_ENV"
+
+          echo \
+            "ANDROID_SDK_ROOT=$SDK_ROOT" \
+            >> "$GITHUB_ENV"
+
+          yes | sdkmanager --licenses >/dev/null || true
+
+          sdkmanager \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
-          test -f "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"
-          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
+          test -f \
+            "$SDK_ROOT/platforms/android-35/android.jar"
+
+          test -x \
+            "$SDK_ROOT/build-tools/35.0.0/aapt"
+
+          test -x \
+            "$SDK_ROOT/build-tools/35.0.0/apksigner"
+
+          test -x \
+            "$SDK_ROOT/build-tools/35.0.0/zipalign"
+
+          {
+            echo "ANDROID_SDK_ROOT=$SDK_ROOT"
+            sdkmanager --version
+          } > "$RUNNER_TEMP/ars-sdk-info.txt"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
@@ -337,45 +361,62 @@ jobs:
           : "${ARS_RELEASE_CERT_SHA256:?Missing ARS_RELEASE_CERT_SHA256}"
 
           EXPECTED="$(
-            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
-              | tr -d ':[:space:]' \
-              | tr '[:lower:]' '[:upper:]'
+            printf '%s' \
+              "$ARS_RELEASE_CERT_SHA256" \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
           )"
 
-          test "$EXPECTED" = "$OFFICIAL_CERT_SHA256" || {
-            echo "::error::Secret certificate bukan signer resmi ARS POS."
-            exit 1
-          }
+          test \
+            "$EXPECTED" = "$OFFICIAL_CERT_SHA256" || {
+              echo "::error::Secret ARS_RELEASE_CERT_SHA256 bukan signer resmi ARS POS."
+              exit 1
+            }
 
-          KEYSTORE="$RUNNER_TEMP/ars-v890e-216.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v890f-217.jks"
+
           umask 077
-          printf '%s' "$ARS_RELEASE_KEYSTORE_BASE64" \
-            | base64 --decode > "$KEYSTORE"
+
+          printf '%s' \
+            "$ARS_RELEASE_KEYSTORE_BASE64" \
+            | base64 --decode \
+            > "$KEYSTORE"
 
           test -s "$KEYSTORE"
 
-          keytool -list \
+          keytool \
+            -list \
             -keystore "$KEYSTORE" \
             -storepass:env ARS_RELEASE_STORE_PASSWORD \
-            -alias "$ARS_RELEASE_KEY_ALIAS" >/dev/null
+            -alias "$ARS_RELEASE_KEY_ALIAS" \
+            >/dev/null
 
           ACTUAL=$(
-            keytool -exportcert -rfc \
+            keytool \
+              -exportcert \
+              -rfc \
               -keystore "$KEYSTORE" \
               -storepass:env ARS_RELEASE_STORE_PASSWORD \
               -alias "$ARS_RELEASE_KEY_ALIAS" \
-            | openssl x509 -outform DER \
+            | openssl x509 \
+              -outform DER \
             | sha256sum \
             | awk '{print toupper($1)}'
           )
 
-          test "$ACTUAL" = "$OFFICIAL_CERT_SHA256" || {
-            echo "::error::Keystore signer mismatch: $ACTUAL"
-            exit 1
-          }
+          test \
+            "$ACTUAL" = "$OFFICIAL_CERT_SHA256" || {
+              echo "::error::Keystore signer mismatch: $ACTUAL"
+              exit 1
+            }
 
-          echo "ARS_RELEASE_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
-          echo "Official signer pre-build verification: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo \
+            "ARS_RELEASE_STORE_FILE=$KEYSTORE" \
+            >> "$GITHUB_ENV"
+
+          echo \
+            "Official signer pre-build verification: PASS" \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Compile Kotlin and run regression tests
         shell: bash
@@ -404,7 +445,11 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          gradle :app:assembleRelease --no-daemon --stacktrace
+
+          gradle \
+            :app:assembleRelease \
+            --no-daemon \
+            --stacktrace
 
       - name: Verify package version signer and alignment
         shell: bash
@@ -415,75 +460,122 @@ jobs:
           cd "$PROJECT_DIR"
 
           APK="app/build/outputs/apk/release/app-release.apk"
+
           test -s "$APK"
 
           SDK_BIN="$ANDROID_SDK_ROOT/build-tools/35.0.0"
-          "$SDK_BIN/aapt" dump badging "$APK" > apk-badging.txt
 
-          grep -Fq "name='$EXPECTED_PACKAGE'" apk-badging.txt
-          grep -Fq "versionCode='$EXPECTED_VERSION_CODE'" apk-badging.txt
-          grep -Fq "versionName='$EXPECTED_VERSION_NAME'" apk-badging.txt
-          test "$EXPECTED_VERSION_CODE" -gt "$PREVIOUS_VERSION_CODE"
+          "$SDK_BIN/aapt" \
+            dump badging \
+            "$APK" \
+            > apk-badging.txt
 
-          "$SDK_BIN/apksigner" verify \
+          grep -Fq \
+            "name='$EXPECTED_PACKAGE'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionCode='$EXPECTED_VERSION_CODE'" \
+            apk-badging.txt
+
+          grep -Fq \
+            "versionName='$EXPECTED_VERSION_NAME'" \
+            apk-badging.txt
+
+          test \
+            "$EXPECTED_VERSION_CODE" \
+            -gt \
+            "$PREVIOUS_VERSION_CODE"
+
+          "$SDK_BIN/apksigner" \
+            verify \
             --verbose \
             --print-certs \
-            "$APK" > signer-info.txt
+            "$APK" \
+            > signer-info.txt
 
-          "$SDK_BIN/zipalign" -c -P 16 -v 4 "$APK"
+          "$SDK_BIN/zipalign" \
+            -c \
+            -P 16 \
+            -v 4 \
+            "$APK"
 
           ACTUAL="$(
-            awk -F': ' \
+            awk \
+              -F': ' \
               '/Signer #1 certificate SHA-256 digest:/ {
                 print $2
                 exit
-              }' signer-info.txt \
+              }' \
+              signer-info.txt \
             | tr -d ':[:space:]' \
             | tr '[:lower:]' '[:upper:]'
           )"
 
           EXPECTED="$(
-            printf '%s' "$ARS_RELEASE_CERT_SHA256" \
-              | tr -d ':[:space:]' \
-              | tr '[:lower:]' '[:upper:]'
+            printf '%s' \
+              "$ARS_RELEASE_CERT_SHA256" \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]'
           )"
 
           test -n "$ACTUAL"
           test "$ACTUAL" = "$EXPECTED"
           test "$ACTUAL" = "$OFFICIAL_CERT_SHA256"
 
-          mkdir -p "$GITHUB_WORKSPACE/release-output"
+          mkdir -p \
+            "$GITHUB_WORKSPACE/release-output"
 
-          OUT_APK="$GITHUB_WORKSPACE/release-output/ARS-POS-1.12.4-V8.9.0-E-PHYSICAL-AUTHORITY-APVD-LATENCY-216-SIGNED.apk"
+          OUT_APK="$GITHUB_WORKSPACE/release-output/ARS-POS-1.12.5-V8.9.0-F-PHYSICAL-AUTHORITY-APVD-CANVAS-217-SIGNED.apk"
 
-          cp "$APK" "$OUT_APK"
-          cp signer-info.txt \
+          cp \
+            "$APK" \
+            "$OUT_APK"
+
+          cp \
+            signer-info.txt \
             "$GITHUB_WORKSPACE/release-output/SIGNING_FINGERPRINT.txt"
-          cp apk-badging.txt \
+
+          cp \
+            apk-badging.txt \
             "$GITHUB_WORKSPACE/release-output/APK_METADATA.txt"
-          cp "$RUNNER_TEMP/ars-source-checks.txt" \
+
+          cp \
+            "$RUNNER_TEMP/ars-source-checks.txt" \
             "$GITHUB_WORKSPACE/release-output/SOURCE_CHECKS.txt"
-          cp "$RUNNER_TEMP/ars-sdk-info.txt" \
+
+          cp \
+            "$RUNNER_TEMP/ars-sdk-info.txt" \
             "$GITHUB_WORKSPACE/release-output/SDK_INFO.txt"
-          cp validation/validation-status.json \
+
+          cp \
+            validation/validation-status.json \
             "$GITHUB_WORKSPACE/release-output/SOURCE_VALIDATION_STATUS.json"
 
-          sha256sum "$OUT_APK" \
+          sha256sum \
+            "$OUT_APK" \
             > "$GITHUB_WORKSPACE/release-output/APK_SHA256.txt"
 
-          echo "Build 1.12.4 (216) / Phase 4.3.6.2 / V8.9.0-E: PASS." \
+          echo \
+            "Build 1.12.5 (217) / Phase 4.3.6.3 / V8.9.0-F: PASS." \
             >> "$GITHUB_STEP_SUMMARY"
-          echo "One physical instance = one identity job; bounded APVD + mask-aware LONG authenticity: ACTIVE." \
+
+          echo \
+            "Physical authority ledger + bounded APVD query canvas + reproducible CI: ACTIVE." \
             >> "$GITHUB_STEP_SUMMARY"
-          echo "Cloud Identity=SHADOW; Self Learning=ACTIVE_CONFIRMED_ONLY; recognition thresholds unchanged." \
+
+          echo \
+            "Cloud Identity=SHADOW; Self Learning=ACTIVE_CONFIRMED_ONLY; recognition thresholds unchanged." \
             >> "$GITHUB_STEP_SUMMARY"
-          echo "Install in-place only; do not uninstall production app." \
+
+          echo \
+            "Install in-place only; do not uninstall production app." \
             >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified official APK
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.9.0-E-PHYSICAL-AUTHORITY-APVD-LATENCY-216-OFFICIAL
+          name: ARS-POS-V8.9.0-F-PHYSICAL-AUTHORITY-APVD-CANVAS-217-OFFICIAL
           path: release-output/
           if-no-files-found: error
           retention-days: 30
@@ -492,7 +584,7 @@ jobs:
         if: always() && env.PROJECT_DIR != ''
         uses: actions/upload-artifact@v7
         with:
-          name: ARS-POS-V8.9.0-E-216-TEST-REPORTS
+          name: ARS-POS-V8.9.0-F-217-TEST-REPORTS
           path: |
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/reports/tests/
             ${{ env.PROJECT_DIR }}/physicaltruth-jvm/build/test-results/
@@ -506,11 +598,12 @@ jobs:
         if: always()
         shell: bash
         run: |
-          KEYSTORE="$RUNNER_TEMP/ars-v890e-216.jks"
+          KEYSTORE="$RUNNER_TEMP/ars-v890f-217.jks"
 
           if [ -f "$KEYSTORE" ]; then
             if command -v shred >/dev/null 2>&1; then
-              shred -u "$KEYSTORE" || rm -f -- "$KEYSTORE"
+              shred -u "$KEYSTORE" || \
+                rm -f -- "$KEYSTORE"
             else
               rm -f -- "$KEYSTORE"
             fi
